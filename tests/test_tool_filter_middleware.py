@@ -83,25 +83,86 @@ async def test_tool_filter_middleware_filters_disabled_tools():
 @pytest.mark.asyncio
 async def test_get_disabled_tools_from_database():
     """
-    Test that disabled tools are correctly queried from the database.
+    Test that disabled tools are correctly queried from the database using a real test database.
     """
-    # Create mock disabled tools
-
-    middleware = ToolFilterMiddleware()
-    with patch("mcp_anywhere.core.middleware.get_async_session") as mock_session:
-        # Setup database mock
-        mock_db = AsyncMock(spec=AsyncSession)
-        mock_session.return_value.__aenter__.return_value = mock_db
-        # Configure execute to return an object with scalars().all()
-        mock_result = Mock()
-        mock_scalars = Mock()
-        mock_scalars.all.return_value = ["tool1", "tool2"]
-        mock_result.scalars.return_value = mock_scalars
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        # Call async method directly
-        disabled = await middleware._get_disabled_tools_async()
-        assert disabled == {"tool1", "tool2"}
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    from sqlalchemy.orm import sessionmaker
+    from mcp_anywhere.base import Base
+    from mcp_anywhere.database import MCPServerTool
+    import tempfile
+    import os
+    
+    # Create a temporary SQLite database for testing
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+    
+    try:
+        # Create async engine for test database
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+        
+        # Create tables
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        
+        # Insert test data
+        async with TestSessionLocal() as session:
+            # Create some enabled and disabled tools
+            tools = [
+                MCPServerTool(
+                    tool_name="enabled_tool_1",
+                    server_id="server1", 
+                    tool_description="Enabled tool 1",
+                    is_enabled=True
+                ),
+                MCPServerTool(
+                    tool_name="disabled_tool_1", 
+                    server_id="server1",
+                    tool_description="Disabled tool 1", 
+                    is_enabled=False
+                ),
+                MCPServerTool(
+                    tool_name="disabled_tool_2",
+                    server_id="server2", 
+                    tool_description="Disabled tool 2",
+                    is_enabled=False
+                ),
+                MCPServerTool(
+                    tool_name="enabled_tool_2",
+                    server_id="server2",
+                    tool_description="Enabled tool 2", 
+                    is_enabled=True
+                ),
+            ]
+            
+            for tool in tools:
+                session.add(tool)
+            await session.commit()
+        
+        # Patch get_async_session to use our test database
+        with patch("mcp_anywhere.core.middleware.get_async_session") as mock_get_session:
+            def mock_session_context():
+                return TestSessionLocal()
+            
+            mock_get_session.side_effect = mock_session_context
+            
+            # Test the actual method
+            middleware = ToolFilterMiddleware()
+            disabled_tools = await middleware._get_disabled_tools_async()
+            
+            # Should return only the disabled tool names
+            expected_disabled = {"disabled_tool_1", "disabled_tool_2"}
+            assert disabled_tools == expected_disabled
+            
+        # Cleanup
+        await test_engine.dispose()
+        
+    finally:
+        # Remove temporary database file
+        if os.path.exists(db_path):
+            os.unlink(db_path)
 
 
 @pytest.mark.asyncio
