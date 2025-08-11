@@ -63,7 +63,7 @@ class ToolFilterMiddleware(Middleware):
         """
         disabled: set[str] = set()
         async with get_async_session() as db_session:
-            stmt = select(MCPServerTool.tool_name).where(not MCPServerTool.is_enabled)
+            stmt = select(MCPServerTool.tool_name).where(MCPServerTool.is_enabled == False)
             result = await db_session.execute(stmt)
             for name in result.scalars().all():
                 disabled.add(name)

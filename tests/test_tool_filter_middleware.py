@@ -141,13 +141,16 @@ async def test_get_disabled_tools_from_database():
                 session.add(tool)
             await session.commit()
         
+        # Create a proper async context manager mock
+        from contextlib import asynccontextmanager
+        
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+        
         # Patch get_async_session to use our test database
-        with patch("mcp_anywhere.core.middleware.get_async_session") as mock_get_session:
-            def mock_session_context():
-                return TestSessionLocal()
-            
-            mock_get_session.side_effect = mock_session_context
-            
+        with patch("mcp_anywhere.core.middleware.get_async_session", side_effect=mock_session_context):
             # Test the actual method
             middleware = ToolFilterMiddleware()
             disabled_tools = await middleware._get_disabled_tools_async()
