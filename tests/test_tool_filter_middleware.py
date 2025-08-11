@@ -86,10 +86,6 @@ async def test_get_disabled_tools_from_database():
     Test that disabled tools are correctly queried from the database.
     """
     # Create mock disabled tools
-    [
-        Mock(tool_name="tool1", is_enabled=False),
-        Mock(tool_name="tool2", is_enabled=False),
-    ]
 
     middleware = ToolFilterMiddleware()
     with patch("mcp_anywhere.core.middleware.get_async_session") as mock_session:
