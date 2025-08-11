@@ -73,8 +73,7 @@ async def test_tool_filter_middleware_filters_disabled_tools():
     ):
         filtered = await middleware.on_list_tools(mock_context, mock_call_next)
         tool_names = {
-            t["name"] if isinstance(t, dict) else getattr(t, "name", "")
-            for t in filtered
+            t["name"] if isinstance(t, dict) else getattr(t, "name", "") for t in filtered
         }
         assert "disabled_tool" not in tool_names
         mock_call_next.assert_called_once_with(mock_context)
@@ -91,77 +90,77 @@ async def test_get_disabled_tools_from_database():
     from mcp_anywhere.database import MCPServerTool
     import tempfile
     import os
-    
+
     # Create a temporary SQLite database for testing
     with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
         db_path = tmp_db.name
-    
+
     try:
         # Create async engine for test database
         test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
-        TestSessionLocal = sessionmaker(
-            test_engine, class_=AsyncSession, expire_on_commit=False
-        )
-        
+        TestSessionLocal = sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
         # Create tables
         async with test_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        
+
         # Insert test data
         async with TestSessionLocal() as session:
             # Create some enabled and disabled tools
             tools = [
                 MCPServerTool(
                     tool_name="enabled_tool_1",
-                    server_id="server1", 
+                    server_id="server1",
                     tool_description="Enabled tool 1",
-                    is_enabled=True
+                    is_enabled=True,
                 ),
                 MCPServerTool(
-                    tool_name="disabled_tool_1", 
+                    tool_name="disabled_tool_1",
                     server_id="server1",
-                    tool_description="Disabled tool 1", 
-                    is_enabled=False
+                    tool_description="Disabled tool 1",
+                    is_enabled=False,
                 ),
                 MCPServerTool(
                     tool_name="disabled_tool_2",
-                    server_id="server2", 
+                    server_id="server2",
                     tool_description="Disabled tool 2",
-                    is_enabled=False
+                    is_enabled=False,
                 ),
                 MCPServerTool(
                     tool_name="enabled_tool_2",
                     server_id="server2",
-                    tool_description="Enabled tool 2", 
-                    is_enabled=True
+                    tool_description="Enabled tool 2",
+                    is_enabled=True,
                 ),
             ]
-            
+
             for tool in tools:
                 session.add(tool)
             await session.commit()
-        
+
         # Create a proper async context manager mock
         from contextlib import asynccontextmanager
-        
+
         @asynccontextmanager
         async def mock_session_context():
             async with TestSessionLocal() as session:
                 yield session
-        
+
         # Patch get_async_session to use our test database
-        with patch("mcp_anywhere.core.middleware.get_async_session", side_effect=mock_session_context):
+        with patch(
+            "mcp_anywhere.core.middleware.get_async_session", side_effect=mock_session_context
+        ):
             # Test the actual method
             middleware = ToolFilterMiddleware()
             disabled_tools = await middleware._get_disabled_tools_async()
-            
+
             # Should return only the disabled tool names
             expected_disabled = {"disabled_tool_1", "disabled_tool_2"}
             assert disabled_tools == expected_disabled
-            
+
         # Cleanup
         await test_engine.dispose()
-        
+
     finally:
         # Remove temporary database file
         if os.path.exists(db_path):

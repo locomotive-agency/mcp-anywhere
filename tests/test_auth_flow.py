@@ -29,9 +29,7 @@ async def test_login_and_session(client: httpx.AsyncClient, db_session: AsyncSes
 
     # Mock the database session in the route handler
     with patch("mcp_anywhere.auth.routes.Request.app") as mock_app:
-        mock_app.state.get_async_session.return_value.__aenter__.return_value = (
-            db_session
-        )
+        mock_app.state.get_async_session.return_value.__aenter__.return_value = db_session
 
         # Test GET request to login page
         response = await client.get("/auth/login")
@@ -48,9 +46,7 @@ async def test_login_and_session(client: httpx.AsyncClient, db_session: AsyncSes
 
         # Verify session cookie is set
         cookies = response.cookies
-        assert (
-            "session" in cookies or "mcp_session" in cookies
-        )  # Check for session cookie
+        assert "session" in cookies or "mcp_session" in cookies  # Check for session cookie
 
         # Test POST request with invalid credentials
         invalid_form_data = {"username": "testuser", "password": "wrongpassword"}
@@ -76,6 +72,4 @@ async def test_full_auth_code_flow(client: httpx.AsyncClient, db_session: AsyncS
     # we'll skip it for now and mark it as a TODO for integration testing
     import pytest
 
-    pytest.skip(
-        "OAuth flow test requires full integration setup - TODO for integration tests"
-    )
+    pytest.skip("OAuth flow test requires full integration setup - TODO for integration tests")

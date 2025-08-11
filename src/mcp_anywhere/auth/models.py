@@ -57,15 +57,11 @@ class OAuth2Client(Base):
     scope = Column(String(255), nullable=False, default="read")
     grant_types = Column(String(255), nullable=False, default="authorization_code")
     response_types = Column(String(255), nullable=False, default="code")
-    token_endpoint_auth_method = Column(
-        String(50), nullable=False, default="client_secret_basic"
-    )
+    token_endpoint_auth_method = Column(String(50), nullable=False, default="client_secret_basic")
     is_confidential = Column(Boolean, nullable=False, default=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self) -> dict:
         """Convert client to dictionary representation."""
@@ -165,9 +161,7 @@ class OAuth2Token(Base):
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "is_revoked": self.is_revoked,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "last_used_at": (
-                self.last_used_at.isoformat() if self.last_used_at else None
-            ),
+            "last_used_at": (self.last_used_at.isoformat() if self.last_used_at else None),
         }
 
 
@@ -178,17 +172,13 @@ class OAuth2RefreshToken(Base):
 
     id = Column(Integer, primary_key=True)
     token = Column(String(255), unique=True, nullable=False, index=True)
-    access_token_id = Column(
-        Integer, ForeignKey("oauth2_tokens.id"), nullable=False, index=True
-    )
+    access_token_id = Column(Integer, ForeignKey("oauth2_tokens.id"), nullable=False, index=True)
     client_id = Column(
         String(48), ForeignKey("oauth2_clients.client_id"), nullable=False, index=True
     )
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     scope = Column(String(255), nullable=False)
-    expires_at = Column(
-        DateTime, nullable=True
-    )  # Refresh tokens can be long-lived or never expire
+    expires_at = Column(DateTime, nullable=True)  # Refresh tokens can be long-lived or never expire
     is_revoked = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_used_at = Column(DateTime, nullable=True)
@@ -215,16 +205,12 @@ class OAuth2RefreshToken(Base):
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "is_revoked": self.is_revoked,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "last_used_at": (
-                self.last_used_at.isoformat() if self.last_used_at else None
-            ),
+            "last_used_at": (self.last_used_at.isoformat() if self.last_used_at else None),
         }
 
 
 # Database indexes for optimal OAuth performance
-Index(
-    "idx_auth_codes_client_user", AuthorizationCode.client_id, AuthorizationCode.user_id
-)
+Index("idx_auth_codes_client_user", AuthorizationCode.client_id, AuthorizationCode.user_id)
 Index("idx_auth_codes_expires", AuthorizationCode.expires_at, AuthorizationCode.is_used)
 Index("idx_tokens_client_user", OAuth2Token.client_id, OAuth2Token.user_id)
 Index("idx_tokens_expires_revoked", OAuth2Token.expires_at, OAuth2Token.is_revoked)

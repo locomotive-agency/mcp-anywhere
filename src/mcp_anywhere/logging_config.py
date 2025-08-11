@@ -30,9 +30,7 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def configure_logging(
@@ -152,9 +150,7 @@ def suppress_deprecation_warnings() -> None:
     )
 
     # Log that we're suppressing these warnings
-    logger.debug(
-        "Suppressing websockets deprecation warnings until uvicorn updates to new API"
-    )
+    logger.debug("Suppressing websockets deprecation warnings until uvicorn updates to new API")
 
 
 def get_logger(name: str):

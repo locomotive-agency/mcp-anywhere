@@ -104,9 +104,7 @@ class MCPManager:
             config_options = create_mcp_config(server_config)
 
             if not config_options["new"] and not config_options["existing"]:
-                raise RuntimeError(
-                    f"Failed to create proxy config for {server_config.name}"
-                )
+                raise RuntimeError(f"Failed to create proxy config for {server_config.name}")
 
             # Check container health and select appropriate config
             container_manager = ContainerManager()
@@ -172,9 +170,7 @@ class MCPManager:
             # Remove from our tracking
             del self.mounted_servers[server_id]
 
-            logger.info(
-                f"Successfully unmounted server '{server_id}' from all managers"
-            )
+            logger.info(f"Successfully unmounted server '{server_id}' from all managers")
 
         except (RuntimeError, ValueError, KeyError) as e:
             logger.exception(f"Failed to remove server '{server_id}': {e}")
@@ -198,13 +194,9 @@ class MCPManager:
             # Convert tools to the format expected by the database
             discovered_tools = []
             for key, tool in tools.items():
-                discovered_tools.append(
-                    {"name": key, "description": tool.description or ""}
-                )
+                discovered_tools.append({"name": key, "description": tool.description or ""})
 
-            logger.info(
-                f"Discovered {len(discovered_tools)} tools for server '{server_id}'"
-            )
+            logger.info(f"Discovered {len(discovered_tools)} tools for server '{server_id}'")
             return discovered_tools
 
         except (RuntimeError, ValueError, ConnectionError, AttributeError) as e:

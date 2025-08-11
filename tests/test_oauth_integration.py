@@ -64,13 +64,9 @@ class TestOAuthIntegrationFlow:
         self.csrf_protection = CSRFProtection(expiration_seconds=600)
 
         # PKCE parameters for testing
-        self.code_verifier = (
-            base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
-        )
+        self.code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode().rstrip("=")
         self.code_challenge = (
-            base64.urlsafe_b64encode(
-                hashlib.sha256(self.code_verifier.encode()).digest()
-            )
+            base64.urlsafe_b64encode(hashlib.sha256(self.code_verifier.encode()).digest())
             .decode()
             .rstrip("=")
         )
@@ -99,9 +95,7 @@ class TestOAuthIntegrationFlow:
         assert cached_client is not None
         assert cached_client.client_id == "test_client_123"
         assert cached_client.client_secret is None  # Public client
-        assert "http://localhost:3000/callback" in [
-            str(uri) for uri in cached_client.redirect_uris
-        ]
+        assert "http://localhost:3000/callback" in [str(uri) for uri in cached_client.redirect_uris]
 
         print("✅ Step 1: Client registration successful")
 
@@ -220,9 +214,7 @@ class TestOAuthIntegrationFlow:
         )
 
         # Exchange authorization code for token
-        oauth_token = await self.provider.exchange_authorization_code(
-            client_info, auth_code
-        )
+        oauth_token = await self.provider.exchange_authorization_code(client_info, auth_code)
 
         # Verify token response
         assert isinstance(oauth_token, OAuthToken)
@@ -235,9 +227,7 @@ class TestOAuthIntegrationFlow:
         assert auth_code_string not in self.provider.auth_codes
 
         # Verify token is stored for introspection
-        access_token_obj = await self.provider.introspect_token(
-            oauth_token.access_token
-        )
+        access_token_obj = await self.provider.introspect_token(oauth_token.access_token)
         assert access_token_obj is not None
         assert access_token_obj.client_id == "test_client_123"
 
@@ -251,9 +241,7 @@ class TestOAuthIntegrationFlow:
         oauth_token = await self.test_step4_token_exchange()
 
         # Test token introspection (what middleware uses)
-        access_token_obj = await self.provider.introspect_token(
-            oauth_token.access_token
-        )
+        access_token_obj = await self.provider.introspect_token(oauth_token.access_token)
 
         # Verify token is valid
         assert access_token_obj is not None
@@ -292,9 +280,7 @@ class TestOAuthIntegrationFlow:
     def test_csrf_protection_integration(self):
         """Test CSRF protection integration."""
         # Generate state
-        state = self.csrf_protection.generate_state(
-            "test_client", "http://localhost:3000/callback"
-        )
+        state = self.csrf_protection.generate_state("test_client", "http://localhost:3000/callback")
 
         # Verify state is valid
         assert self.csrf_protection.validate_state(

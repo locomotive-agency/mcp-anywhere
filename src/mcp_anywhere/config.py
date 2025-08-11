@@ -50,9 +50,7 @@ class Config:
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
     # Claude settings
-    ANTHROPIC_MODEL_NAME = os.environ.get(
-        "ANTHROPIC_MODEL_NAME", "claude-sonnet-4-20250514"
-    )
+    ANTHROPIC_MODEL_NAME = os.environ.get("ANTHROPIC_MODEL_NAME", "claude-sonnet-4-20250514")
 
     # MCP Server settings
     # Base path users configure (may or may not include leading/trailing slashes)
@@ -71,12 +69,8 @@ class Config:
 
     # Server URL - configurable for different environments
     # Construct default SERVER_URL from DEFAULT_HOST and DEFAULT_PORT
-    _default_host_for_url = (
-        "localhost" if DEFAULT_HOST in ("0.0.0.0", "") else DEFAULT_HOST
-    )
-    SERVER_URL = os.environ.get(
-        "SERVER_URL", f"http://{_default_host_for_url}:{DEFAULT_PORT}"
-    )
+    _default_host_for_url = "localhost" if DEFAULT_HOST in ("0.0.0.0", "") else DEFAULT_HOST
+    SERVER_URL = os.environ.get("SERVER_URL", f"http://{_default_host_for_url}:{DEFAULT_PORT}")
 
     # Logging settings
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
@@ -89,6 +83,4 @@ class Config:
     MCP_PYTHON_IMAGE = os.environ.get("MCP_PYTHON_IMAGE", "python:3.11-slim")
     MCP_NODE_IMAGE = os.environ.get("MCP_NODE_IMAGE", "node:20-slim")
     DOCKER_TIMEOUT = int(os.environ.get("DOCKER_TIMEOUT", "300"))  # 5 minutes default
-    DEFAULT_SERVERS_FILE = os.environ.get(
-        "DEFAULT_SERVERS_FILE", "default_servers.json"
-    )
+    DEFAULT_SERVERS_FILE = os.environ.get("DEFAULT_SERVERS_FILE", "default_servers.json")

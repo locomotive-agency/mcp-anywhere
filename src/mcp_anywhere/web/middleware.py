@@ -80,9 +80,7 @@ class SessionAuthMiddleware(BasePathProtectionMiddleware):
 
         # Path is protected, check for valid session
         if not self._is_authenticated(request):
-            logger.info(
-                f"Unauthenticated access to protected path: {path}, redirecting to login"
-            )
+            logger.info(f"Unauthenticated access to protected path: {path}, redirecting to login")
             # Redirect to login page
             return RedirectResponse(url=self.login_url, status_code=302)
 
@@ -101,9 +99,7 @@ class RedirectMiddleware(BaseHTTPMiddleware):
             return RedirectResponse(url=f"{Config.MCP_PATH_PREFIX}")
 
         # If it's a .well-known path with /mcp, strip it for correct routing
-        if ".well-known" in request.url.path and request.url.path.endswith(
-            mcp_mount_path
-        ):
+        if ".well-known" in request.url.path and request.url.path.endswith(mcp_mount_path):
             new_path = request.url.path[: -len(mcp_mount_path)]
             request.scope["path"] = new_path
 

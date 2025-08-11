@@ -40,9 +40,7 @@ class ContainerManager:
         # Get Node.js image from config
         self.node_image = Config.MCP_NODE_IMAGE
         # Docker client with extended timeout for large operations
-        self.docker_client: DockerClient = DockerClient.from_env(
-            timeout=Config.DOCKER_TIMEOUT
-        )
+        self.docker_client: DockerClient = DockerClient.from_env(timeout=Config.DOCKER_TIMEOUT)
         # Track containers that were reused to avoid cleanup
         self.reused_containers = set()
 
@@ -88,9 +86,7 @@ class ContainerManager:
             container_image = (
                 container.image.tags[0] if container.image.tags else container.image.id
             )
-            if container_image != expected_image and not container_image.startswith(
-                expected_image
-            ):
+            if container_image != expected_image and not container_image.startswith(expected_image):
                 logger.debug(
                     f"Container {container_name} has wrong image: {container_image} != {expected_image}"
                 )
@@ -100,9 +96,7 @@ class ContainerManager:
             return True
 
         except (docker.errors.NotFound, IndexError, AttributeError):
-            logger.debug(
-                f"Container {container_name} not found or has invalid image info"
-            )
+            logger.debug(f"Container {container_name} not found or has invalid image info")
             return False
         except docker.errors.APIError as e:
             logger.warning(f"Error checking container {container_name}: {e}")
@@ -233,9 +227,7 @@ class ContainerManager:
         """Build a Docker image for an MCP server with dependencies pre-installed."""
         image_tag = self.get_image_tag(server)
 
-        logger.info(
-            f"Building Docker image for server {server.name} ({server.runtime_type})"
-        )
+        logger.info(f"Building Docker image for server {server.name} ({server.runtime_type})")
 
         try:
             # Determine base image and install command
@@ -282,16 +274,12 @@ class ContainerManager:
                     server.runtime_type == "uvx"
                     and "mcp-python-interpreter" in server.start_command
                 ):
-                    logger.info(
-                        "Creating Python sandbox directory for mcp-python-interpreter..."
-                    )
+                    logger.info("Creating Python sandbox directory for mcp-python-interpreter...")
                     mkdir_result = session.execute_command(
                         "mkdir -p /data/python-sandbox && chmod 755 /data/python-sandbox"
                     )
                     if mkdir_result.exit_code != 0:
-                        logger.warning(
-                            f"Failed to create sandbox directory: {mkdir_result.stderr}"
-                        )
+                        logger.warning(f"Failed to create sandbox directory: {mkdir_result.stderr}")
 
                 # Install dependencies only if install_command is not empty
                 if install_command:
@@ -300,15 +288,11 @@ class ContainerManager:
                     result = session.execute_command(install_command)
 
                     if result.exit_code != 0:
-                        raise RuntimeError(
-                            f"Failed to install {install_command}: {result.stderr}"
-                        )
+                        raise RuntimeError(f"Failed to install {install_command}: {result.stderr}")
 
                     logger.info("Dependencies installed successfully")
                 else:
-                    logger.info(
-                        "No install command provided, skipping dependency installation"
-                    )
+                    logger.info("No install command provided, skipping dependency installation")
 
                 # Get the container that was just used
                 container = session.container
@@ -333,9 +317,7 @@ class ContainerManager:
             logger.exception(f"Failed to build image for server {server.name}: {e}")
             raise
 
-    def load_default_servers(
-        self, json_file_path: str | None = None
-    ) -> list[dict[str, Any]]:
+    def load_default_servers(self, json_file_path: str | None = None) -> list[dict[str, Any]]:
         """Load default server configurations from JSON file."""
         if json_file_path is None:
             json_file_path = Config.DEFAULT_SERVERS_FILE
@@ -357,9 +339,7 @@ class ContainerManager:
             logger.exception(f"Failed to parse JSON file {json_file_path}: {e}")
             raise
         except (FileNotFoundError, PermissionError, OSError) as e:
-            logger.exception(
-                f"Failed to load default servers from {json_file_path}: {e}"
-            )
+            logger.exception(f"Failed to load default servers from {json_file_path}: {e}")
             raise
 
     async def ensure_default_servers(self, json_file_path: str | None = None) -> None:
@@ -380,9 +360,7 @@ class ContainerManager:
                     existing_server = result.scalar_one_or_none()
 
                     if not existing_server:
-                        logger.info(
-                            f"Creating default server: {server_config.get('name')}"
-                        )
+                        logger.info(f"Creating default server: {server_config.get('name')}")
                         new_server = MCPServer(
                             name=server_config.get("name"),
                             github_url=server_config.get("github_url"),
@@ -409,9 +387,7 @@ class ContainerManager:
 
         # 1. Check if Docker is running
         if not self._check_docker_running():
-            logger.error(
-                "Docker is not running. Please start Docker and restart the application."
-            )
+            logger.error("Docker is not running. Please start Docker and restart the application.")
             raise RuntimeError("Docker daemon is not running")
         logger.info("Docker is running.")
 
@@ -422,9 +398,7 @@ class ContainerManager:
             self._ensure_image_exists(Config.MCP_PYTHON_IMAGE)
             logger.info("Base Docker images are available.")
         except (APIError, OSError, RuntimeError) as e:
-            logger.exception(
-                f"Failed to ensure base images: {e}. Please check your Docker setup."
-            )
+            logger.exception(f"Failed to ensure base images: {e}. Please check your Docker setup.")
             raise
 
         # 3. Ensure default servers exist in the database
@@ -491,9 +465,7 @@ class ContainerManager:
             for server in built_servers:
                 container_name = self._get_container_name(server.id)
                 if container_name in self.reused_containers:
-                    logger.debug(
-                        f"Skipping cleanup for reused container {container_name}"
-                    )
+                    logger.debug(f"Skipping cleanup for reused container {container_name}")
                 else:
                     self._cleanup_existing_container(container_name)
 
@@ -520,19 +492,19 @@ class ContainerManager:
             # Get all active servers to find their container names
             async with get_async_session() as session:
                 servers = await get_active_servers(session)
-                
+
             if not servers:
                 logger.debug("No active servers found for cleanup.")
                 return
-                
+
             logger.info(f"Cleaning up {len(servers)} server containers...")
-            
+
             for server in servers:
                 container_name = self._get_container_name(server.id)
                 self._cleanup_existing_container(container_name)
-                
+
             logger.info("Container cleanup complete.")
-            
+
         except Exception as e:
             logger.error(f"Error during container cleanup: {e}")
         finally:

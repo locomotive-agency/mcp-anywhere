@@ -96,9 +96,7 @@ class TokenVerifier:
 
         return token
 
-    def verify_bearer_token(
-        self, authorization_header: str | None
-    ) -> dict[str, Any] | None:
+    def verify_bearer_token(self, authorization_header: str | None) -> dict[str, Any] | None:
         """Extract and verify bearer token from Authorization header.
 
         Args:
@@ -113,9 +111,7 @@ class TokenVerifier:
 
         return self.verify(token)
 
-    def has_all_scopes(
-        self, token_payload: dict[str, Any], required_scopes: list
-    ) -> bool:
+    def has_all_scopes(self, token_payload: dict[str, Any], required_scopes: list) -> bool:
         """Check if token has all required scopes.
 
         Args:

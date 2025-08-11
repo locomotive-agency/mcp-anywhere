@@ -29,21 +29,13 @@ class MCPServer(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     github_url: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    runtime_type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # npx, uvx, docker
+    runtime_type: Mapped[str] = mapped_column(String(20), nullable=False)  # npx, uvx, docker
     install_command: Mapped[str] = mapped_column(Text, nullable=False, default="")
     start_command: Mapped[str] = mapped_column(Text, nullable=False)
-    env_variables: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    env_variables: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
-    build_status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="pending"
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    build_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     build_error: Mapped[str | None] = mapped_column(Text)
     image_tag: Mapped[str | None] = mapped_column(String(200))
 
@@ -80,16 +72,12 @@ class MCPServerTool(Base):
     __tablename__ = "mcp_server_tools"
 
     id: Mapped[str] = mapped_column(String(8), primary_key=True, default=generate_id)
-    server_id: Mapped[str] = mapped_column(
-        String(8), ForeignKey("mcp_servers.id"), nullable=False
-    )
+    server_id: Mapped[str] = mapped_column(String(8), ForeignKey("mcp_servers.id"), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     tool_description: Mapped[str | None] = mapped_column(Text)
     tool_schema: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationship back to server
     server: Mapped["MCPServer"] = relationship(back_populates="tools")
@@ -109,9 +97,7 @@ class DatabaseManager:
         """Initialize the async database."""
         if self._engine is None:
             # Create engine - use SQLALCHEMY_DATABASE_URI from config
-            db_url = Config.SQLALCHEMY_DATABASE_URI.replace(
-                "sqlite://", "sqlite+aiosqlite://"
-            )
+            db_url = Config.SQLALCHEMY_DATABASE_URI.replace("sqlite://", "sqlite+aiosqlite://")
             self._engine = create_async_engine(db_url)
 
             # Create session factory

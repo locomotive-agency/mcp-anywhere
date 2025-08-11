@@ -44,12 +44,12 @@ async def test_stdio_mode_displays_correctly(app_stdio_with_mode):
     Test that STDIO mode is correctly stored in app state.
     """
     # Check that transport mode is correctly set in app state
-    assert hasattr(
-        app_stdio_with_mode.state, "transport_mode"
-    ), "App state should have transport_mode attribute"
-    assert (
-        app_stdio_with_mode.state.transport_mode == "stdio"
-    ), f"Expected transport_mode to be 'stdio', got {app_stdio_with_mode.state.transport_mode}"
+    assert hasattr(app_stdio_with_mode.state, "transport_mode"), (
+        "App state should have transport_mode attribute"
+    )
+    assert app_stdio_with_mode.state.transport_mode == "stdio", (
+        f"Expected transport_mode to be 'stdio', got {app_stdio_with_mode.state.transport_mode}"
+    )
 
 
 @pytest.mark.asyncio
@@ -58,12 +58,12 @@ async def test_http_mode_displays_correctly(app_http_with_mode):
     Test that HTTP mode is correctly stored in app state.
     """
     # Check that transport mode is correctly set in app state
-    assert hasattr(
-        app_http_with_mode.state, "transport_mode"
-    ), "App state should have transport_mode attribute"
-    assert (
-        app_http_with_mode.state.transport_mode == "http"
-    ), f"Expected transport_mode to be 'http', got {app_http_with_mode.state.transport_mode}"
+    assert hasattr(app_http_with_mode.state, "transport_mode"), (
+        "App state should have transport_mode attribute"
+    )
+    assert app_http_with_mode.state.transport_mode == "http", (
+        f"Expected transport_mode to be 'http', got {app_http_with_mode.state.transport_mode}"
+    )
 
 
 def test_transport_mode_passed_to_template_context():
@@ -83,9 +83,7 @@ def test_transport_mode_passed_to_template_context():
     context = get_template_context(mock_request)
 
     # Check that transport_mode is in the context
-    assert (
-        "transport_mode" in context
-    ), "transport_mode should be included in template context"
-    assert (
-        context["transport_mode"] == "stdio"
-    ), f"Expected transport_mode to be 'stdio', got {context.get('transport_mode')}"
+    assert "transport_mode" in context, "transport_mode should be included in template context"
+    assert context["transport_mode"] == "stdio", (
+        f"Expected transport_mode to be 'stdio', got {context.get('transport_mode')}"
+    )

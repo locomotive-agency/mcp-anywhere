@@ -61,9 +61,7 @@ class CSRFProtection:
         """
         self.expiration_seconds = expiration_seconds
         self._states: dict[str, CSRFState] = {}
-        logger.info(
-            f"Initialized CSRF protection with {expiration_seconds}s expiration"
-        )
+        logger.info(f"Initialized CSRF protection with {expiration_seconds}s expiration")
 
     def generate_state(self, client_id: str, redirect_uri: str) -> str:
         """Generate a cryptographically secure CSRF state parameter.
@@ -102,14 +100,10 @@ class CSRFProtection:
 
         self._states[state_value] = csrf_state
 
-        logger.debug(
-            f"Generated CSRF state {state_value[:8]}... for client {client_id}"
-        )
+        logger.debug(f"Generated CSRF state {state_value[:8]}... for client {client_id}")
         return state_value
 
-    def validate_state(
-        self, state: str | None, client_id: str, redirect_uri: str
-    ) -> bool:
+    def validate_state(self, state: str | None, client_id: str, redirect_uri: str) -> bool:
         """Validate a CSRF state parameter for OAuth callback.
 
         Validates that:
@@ -136,9 +130,7 @@ class CSRFProtection:
 
         # Check if state exists in our store
         if state not in self._states:
-            logger.warning(
-                f"Unknown state parameter {state[:8]}... for client {client_id}"
-            )
+            logger.warning(f"Unknown state parameter {state[:8]}... for client {client_id}")
             return False
 
         csrf_state = self._states[state]
@@ -173,8 +165,7 @@ class CSRFProtection:
         del self._states[state]
 
         logger.debug(
-            f"Successfully validated and consumed CSRF state {state[:8]}... "
-            f"for client {client_id}"
+            f"Successfully validated and consumed CSRF state {state[:8]}... for client {client_id}"
         )
         return True
 

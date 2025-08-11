@@ -27,6 +27,7 @@ _shutdown_requested = False
 
 def setup_signal_handlers() -> None:
     """Setup signal handlers for graceful shutdown."""
+
     def signal_handler(signum: int, frame) -> None:
         global _shutdown_requested
         if not _shutdown_requested:
@@ -47,11 +48,11 @@ async def cleanup_and_exit() -> None:
         # Clean up containers
         container_manager = ContainerManager()
         await container_manager.cleanup_all_containers()
-        
+
         # Close database connections
         await close_db()
         logger.info("Database connections closed.")
-        
+
         logger.info("Shutdown complete.")
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
@@ -72,9 +73,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Add subcommands
-    subparsers = parser.add_subparsers(
-        dest="command", help="Available commands", required=True
-    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
 
     # Serve command - starts management server with MCP transport options
     serve_parser = subparsers.add_parser(
@@ -120,9 +119,7 @@ def create_parser() -> argparse.ArgumentParser:
     reset_parser = subparsers.add_parser(
         "reset", help="Reset application data including database and configuration"
     )
-    reset_parser.add_argument(
-        "--confirm", action="store_true", help="Skip confirmation prompt"
-    )
+    reset_parser.add_argument("--confirm", action="store_true", help="Skip confirmation prompt")
 
     return parser
 
@@ -147,9 +144,7 @@ def reset_data(confirm: bool = False) -> None:
         print("  - Container build cache and logs")
         print()
 
-        response = (
-            input("Are you sure you want to continue? (yes/no): ").strip().lower()
-        )
+        response = input("Are you sure you want to continue? (yes/no): ").strip().lower()
         if response not in ("yes", "y"):
             print("Reset cancelled.")
             return
@@ -215,7 +210,7 @@ async def main() -> None:
                 # Clean up containers
                 container_manager = ContainerManager()
                 await container_manager.cleanup_all_containers()
-                
+
                 # Close database connections
                 await close_db()
                 print("Database connections closed.")

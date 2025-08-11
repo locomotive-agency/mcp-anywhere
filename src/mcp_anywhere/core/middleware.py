@@ -49,9 +49,7 @@ class ToolFilterMiddleware(Middleware):
             return tools
 
         filtered = self._filter_tools(list(tools), disabled_tools)
-        logger.info(
-            f"ToolFilterMiddleware: filtered tools to {len(filtered)} enabled items"
-        )
+        logger.info(f"ToolFilterMiddleware: filtered tools to {len(filtered)} enabled items")
         return filtered
 
     @staticmethod

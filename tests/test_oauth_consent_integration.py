@@ -29,9 +29,7 @@ async def setup_app_state(app: Starlette, db_session: AsyncSession):
 class TestConsentFlowCore:
     """Test the core consent flow functionality that we directly control."""
 
-    async def setup_test_data(
-        self, db_session: AsyncSession
-    ) -> tuple[User, OAuth2Client]:
+    async def setup_test_data(self, db_session: AsyncSession) -> tuple[User, OAuth2Client]:
         """Set up test user and OAuth client."""
         # Create test admin user
         admin_user = User(username="admin")
@@ -51,9 +49,7 @@ class TestConsentFlowCore:
         await db_session.commit()
         return admin_user, oauth_client
 
-    async def login_user(
-        self, client: httpx.AsyncClient, username: str, password: str
-    ) -> None:
+    async def login_user(self, client: httpx.AsyncClient, username: str, password: str) -> None:
         """Helper to log in a user."""
         login_response = await client.post(
             "/auth/login", data={"username": username, "password": password}
@@ -93,9 +89,7 @@ class TestConsentFlowCore:
         # by directly calling it with a properly set up session
 
         # This test will be skipped until we can properly set up session state
-        pytest.skip(
-            "Session state setup needs refinement for proper OAuth request simulation"
-        )
+        pytest.skip("Session state setup needs refinement for proper OAuth request simulation")
 
     async def test_consent_form_missing_oauth_request_redirects_home(
         self, setup_app_state, client: httpx.AsyncClient, db_session: AsyncSession
@@ -131,9 +125,7 @@ class TestConsentFlowCore:
         assert len(state) > 32
 
         # Test validation
-        is_valid = csrf.validate_state(
-            state, "test_client", "http://localhost:3001/callback"
-        )
+        is_valid = csrf.validate_state(state, "test_client", "http://localhost:3001/callback")
         assert is_valid is True
 
     async def test_oauth_provider_initialization(
