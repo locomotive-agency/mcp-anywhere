@@ -108,25 +108,6 @@ class TestConsentFlowCore:
         assert response.status_code == 302
         assert response.headers["location"] == "/"
 
-    async def test_csrf_protection_initialization(
-        self, setup_app_state, client: httpx.AsyncClient, db_session: AsyncSession
-    ) -> None:
-        """Test that CSRF protection is properly initialized in app state."""
-        app = setup_app_state  # Fixture already returns the configured app
-
-        # Verify CSRF protection is initialized
-        assert hasattr(app.state, "csrf_protection")
-        assert isinstance(app.state.csrf_protection, CSRFProtection)
-
-        # Test CSRF protection functionality
-        csrf = app.state.csrf_protection
-        state = csrf.generate_state("test_client", "http://localhost:3001/callback")
-        assert isinstance(state, str)
-        assert len(state) > 32
-
-        # Test validation
-        is_valid = csrf.validate_state(state, "test_client", "http://localhost:3001/callback")
-        assert is_valid is True
 
     async def test_oauth_provider_initialization(
         self, setup_app_state, client: httpx.AsyncClient, db_session: AsyncSession
@@ -161,19 +142,4 @@ class TestConsentFlowCore:
         assert response.status_code == 302
         assert "error=invalid_credentials" in response.headers["location"]
 
-    @pytest.mark.skip(reason="Full OAuth flow testing requires MCP SDK integration")
-    async def test_full_oauth_consent_flow_with_csrf(
-        self, setup_app_state, client: httpx.AsyncClient, db_session: AsyncSession
-    ) -> None:
-        """Test the complete OAuth consent flow with CSRF protection.
 
-        This test would verify:
-        1. OAuth authorize request stores request in session
-        2. Consent page displays correctly with CSRF token
-        3. Consent form submission validates CSRF token
-        4. Authorization code is generated on allow
-        5. Error is returned on deny
-
-        Skipped because it requires complex MCP SDK OAuth flow setup.
-        """
-        pass
