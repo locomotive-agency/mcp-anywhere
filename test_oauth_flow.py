@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""
-Test script to simulate the complete OAuth flow and test token request.
+"""Test script to simulate the complete OAuth flow and test token request.
 This simulates what MCP Inspector would do.
 """
 
-import json
 import asyncio
-import os
-import secrets
 import base64
 import hashlib
-import requests
+import os
+import secrets
 from urllib.parse import parse_qs, urlparse
+
+import requests
 
 
 class OAuthFlowTester:
@@ -51,7 +50,7 @@ class OAuthFlowTester:
             return None
 
         client_data = response.json()
-        print(f"✅ Client registered successfully!")
+        print("✅ Client registered successfully!")
         print(f"   Client ID: {client_data['client_id']}")
         print(f"   Client Secret: {client_data.get('client_secret', 'None (public client)')}")
 
@@ -103,7 +102,7 @@ class OAuthFlowTester:
 
         if auth_response.status_code == 302:
             consent_url = auth_response.headers.get("Location")
-            print(f"✅ Authorization request successful!")
+            print("✅ Authorization request successful!")
             print(f"   Redirected to: {consent_url}")
             return consent_url
         else:
@@ -143,7 +142,7 @@ class OAuthFlowTester:
 
         if consent_approval.status_code == 302:
             callback_url = consent_approval.headers.get("Location")
-            print(f"✅ Consent approved successfully!")
+            print("✅ Consent approved successfully!")
             print(f"   Callback URL: {callback_url}")
 
             # Extract authorization code from callback URL
@@ -211,10 +210,10 @@ class OAuthFlowTester:
             return False
 
         async def _probe():
+            import httpx
             from fastmcp import Client
             from fastmcp.client.auth import BearerAuth
             from fastmcp.client.logging import LogMessage
-            import httpx
 
             # Use HTTP URL which infers Streamable HTTP transport; include Bearer token auth
             async def log_handler(message: LogMessage):
@@ -262,7 +261,7 @@ class OAuthFlowTester:
             except Exception as e:
                 # Fallback for unexpected errors
                 print(f"❌ MCP client unexpected error: {e}")
-                if hasattr(e, "response") and getattr(e, "response") is not None:
+                if hasattr(e, "response") and e.response is not None:
                     try:
                         resp = e.response
                         print(f"   Status: {resp.status_code}")

@@ -9,7 +9,6 @@ import asyncio
 import shutil
 import signal
 import sys
-from typing import Optional
 
 from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager

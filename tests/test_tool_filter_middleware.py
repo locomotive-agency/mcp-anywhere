@@ -84,12 +84,14 @@ async def test_get_disabled_tools_from_database():
     """
     Test that disabled tools are correctly queried from the database using a real test database.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+    import os
+    import tempfile
+
+    from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.orm import sessionmaker
+
     from mcp_anywhere.base import Base
     from mcp_anywhere.database import MCPServerTool
-    import tempfile
-    import os
 
     # Create a temporary SQLite database for testing
     with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
