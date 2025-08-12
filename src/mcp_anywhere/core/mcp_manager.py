@@ -41,6 +41,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
         ],
         "env": {},
         "transport": "stdio",
+        "timeout": 300,  # 5 minute timeout for tool calls
     }
 
     # Configuration for new container (docker run)
@@ -72,6 +73,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
         ],
         "env": {},  # Already passed via docker -e
         "transport": "stdio",
+        "timeout": 300,  # 5 minute timeout for tool calls
     }
 
     return {"new": new_config, "existing": existing_config}

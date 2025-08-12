@@ -60,11 +60,12 @@ class ContainerManager:
         """Generate the container name for a server."""
         return f"mcp-{server_id}"
 
-    def _is_container_healthy(self, server: MCPServer) -> bool:
+    def _is_container_healthy(self, server: MCPServer, max_retries: int = 3) -> bool:
         """Check if existing container is healthy and can be reused.
 
         Args:
             server: The MCP server configuration
+            max_retries: Maximum number of retries for health checks
 
         Returns:
             bool: True if container exists, is running, and has correct image
@@ -72,35 +73,54 @@ class ContainerManager:
         container_name = self._get_container_name(server.id)
         expected_image = self.get_image_tag(server)
 
-        try:
-            container = self.docker_client.containers.get(container_name)
+        for attempt in range(max_retries):
+            try:
+                container = self.docker_client.containers.get(container_name)
 
-            # Check if container is running
-            if container.status != "running":
-                logger.debug(
-                    f"Container {container_name} is not running (status: {container.status})"
+                # Refresh container status to get latest state
+                container.reload()
+
+                # Check if container is running
+                if container.status != "running":
+                    logger.debug(
+                        f"Container {container_name} is not running (status: {container.status}) - attempt {attempt + 1}/{max_retries}"
+                    )
+                    if attempt < max_retries - 1:
+                        # Give container a moment to start if it's starting up
+                        import time
+                        time.sleep(1)
+                        continue
+                    return False
+
+                # Check if container uses the expected image
+                container_image = (
+                    container.image.tags[0] if container.image.tags else container.image.id
                 )
+                if container_image != expected_image and not container_image.startswith(expected_image):
+                    logger.debug(
+                        f"Container {container_name} has wrong image: {container_image} != {expected_image}"
+                    )
+                    return False
+
+                logger.info(f"Container {container_name} is healthy and can be reused")
+                return True
+
+            except (docker.errors.NotFound, IndexError, AttributeError):
+                logger.debug(f"Container {container_name} not found or has invalid image info - attempt {attempt + 1}/{max_retries}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(0.5)
+                    continue
+                return False
+            except docker.errors.APIError as e:
+                logger.warning(f"Error checking container {container_name} - attempt {attempt + 1}/{max_retries}: {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(1)
+                    continue
                 return False
 
-            # Check if container uses the expected image
-            container_image = (
-                container.image.tags[0] if container.image.tags else container.image.id
-            )
-            if container_image != expected_image and not container_image.startswith(expected_image):
-                logger.debug(
-                    f"Container {container_name} has wrong image: {container_image} != {expected_image}"
-                )
-                return False
-
-            logger.info(f"Container {container_name} is healthy and can be reused")
-            return True
-
-        except (docker.errors.NotFound, IndexError, AttributeError):
-            logger.debug(f"Container {container_name} not found or has invalid image info")
-            return False
-        except docker.errors.APIError as e:
-            logger.warning(f"Error checking container {container_name}: {e}")
-            return False
+        return False
 
     def _cleanup_existing_container(self, container_name: str) -> None:
         """Clean up existing container with the same name.

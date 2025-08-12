@@ -101,7 +101,18 @@ async def run_connect_gateway() -> None:
             if container_manager._is_container_healthy(server):
                 server_config_dict = config_options["existing"]
             else:
-                raise RuntimeError(f"Container {server.name} is not healthy")
+                # Try to use the new configuration instead of failing immediately
+                server_config_dict = config_options["new"]
+                if not server_config_dict:
+                    # Log error to debug file and skip this server
+                    try:
+                        import tempfile
+                        import time
+                        with open(f"{tempfile.gettempdir()}/mcp_anywhere_error.log", "a") as f:
+                            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - Container {server.name} is not healthy and no new config available\n")
+                    except Exception:
+                        pass
+                    continue
 
             # Create proxy configuration in expected format
             single_config = {"mcpServers": {server.name: server_config_dict}}
@@ -124,6 +135,15 @@ async def run_connect_gateway() -> None:
     except KeyboardInterrupt:
         # Clean shutdown on Ctrl+C
         pass
-    except (RuntimeError, ValueError, OSError, ConnectionError):
-        # Silent exit on any error to keep stdio clean
+    except (RuntimeError, ValueError, OSError, ConnectionError) as e:
+        # Log error to help with debugging, but still exit cleanly
+        # Use a separate log file to avoid corrupting stdio
+        try:
+            import tempfile
+            import time
+            with open(f"{tempfile.gettempdir()}/mcp_anywhere_error.log", "a") as f:
+                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - STDIO Gateway Error: {type(e).__name__}: {e}\n")
+        except Exception:
+            # If logging fails, just exit silently as before
+            pass
         sys.exit(1)
