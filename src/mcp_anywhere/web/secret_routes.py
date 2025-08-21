@@ -94,7 +94,7 @@ async def upload_secret_file(request: Request) -> Response:
             stmt = select(MCPServerSecretFile).where(
                 MCPServerSecretFile.server_id == server_id,
                 MCPServerSecretFile.env_var_name == upload_data.env_var_name,
-                MCPServerSecretFile.is_active == True
+                MCPServerSecretFile.is_active
             )
             result = await db_session.execute(stmt)
             existing_file = result.scalar_one_or_none()
