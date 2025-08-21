@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.database import MCPServer
 from mcp_anywhere.logging_config import get_logger
+from mcp_anywhere.security.file_manager import SecureFileManager
 
 logger = get_logger(__name__)
 
@@ -46,13 +47,20 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
     # Configuration for new container (docker run)
     image_tag = container_manager.get_image_tag(server)
 
-    # Extract environment variables
+    # Extract environment variables (both regular and secret file paths)
+    env_vars = container_manager._get_env_vars(server)
     env_args = []
-    for env_var in server.env_variables:
-        if env_var.get("value"):
-            key = env_var["key"]
-            value = env_var["value"]
-            env_args.extend(["-e", f"{key}={value}"])
+    for key, value in env_vars.items():
+        env_args.extend(["-e", f"{key}={value}"])
+    
+    # Prepare secret file volume mounts
+    volume_args = []
+    if server.secret_files:
+        file_manager = SecureFileManager()
+        container_files = file_manager.prepare_container_files(server.id, server.secret_files)
+        
+        for host_path, container_path in container_files.items():
+            volume_args.extend(["-v", f"{host_path}:{container_path}:ro"])
 
     new_config = {
         "command": "docker",
@@ -67,6 +75,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
             "--cpus",
             "0.5",  # CPU limit
             *env_args,  # Environment variables
+            *volume_args,  # Secret file volume mounts
             image_tag,  # Our pre-built image
             *run_command,  # The actual MCP command
         ],

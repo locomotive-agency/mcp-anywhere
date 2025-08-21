@@ -86,6 +86,45 @@ class MCPServerTool(Base):
         return f"<MCPServerTool {self.tool_name}>"
 
 
+class MCPServerSecretFile(Base):
+    """Model for MCP server secret files."""
+
+    __tablename__ = "mcp_server_secret_files"
+
+    id: Mapped[str] = mapped_column(String(8), primary_key=True, default=generate_id)
+    server_id: Mapped[str] = mapped_column(String(8), ForeignKey("mcp_servers.id"), nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[str | None] = mapped_column(String(50))
+    file_size: Mapped[int | None] = mapped_column()
+    env_var_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationship back to server
+    server: Mapped["MCPServer"] = relationship(back_populates="secret_files")
+
+    def __repr__(self) -> str:
+        return f"<MCPServerSecretFile {self.original_filename}>"
+    
+    def to_dict(self) -> dict:
+        """Convert secret file to dictionary."""
+        return {
+            "id": self.id,
+            "server_id": self.server_id,
+            "original_filename": self.original_filename,
+            "stored_filename": self.stored_filename,
+            "file_type": self.file_type,
+            "file_size": self.file_size,
+            "env_var_name": self.env_var_name,
+            "description": self.description,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class DatabaseManager:
     """Manages database engine and session factory lifecycle."""
 
