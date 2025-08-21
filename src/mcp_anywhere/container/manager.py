@@ -25,6 +25,7 @@ from mcp_anywhere.database import (
 )
 from mcp_anywhere.database_utils import store_server_tools
 from mcp_anywhere.logging_config import get_logger
+from mcp_anywhere.security.file_manager import SecureFileManager
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,8 @@ class ContainerManager:
         self.docker_client: DockerClient = DockerClient.from_env(timeout=Config.DOCKER_TIMEOUT)
         # Track containers that were reused to avoid cleanup
         self.reused_containers = set()
+        # Secure file manager for handling secret files
+        self.file_manager = SecureFileManager()
 
     def _check_docker_running(self) -> bool:
         """Check if the Docker daemon is running."""
@@ -151,9 +154,19 @@ class ContainerManager:
     def _get_env_vars(self, server: MCPServer) -> dict[str, str]:
         """Extract environment variables from server configuration."""
         env_vars = {}
+        
+        # Regular environment variables (existing functionality)
         for env_var in server.env_variables:
             if env_var.get("value"):
                 env_vars[env_var["key"]] = env_var["value"]
+        
+        # Secret file environment variables (new functionality)
+        for secret_file in server.secret_files:
+            if secret_file.is_active and secret_file.env_var_name:
+                # Path inside the container where the file will be mounted
+                container_path = f"/secrets/{secret_file.stored_filename}"
+                env_vars[secret_file.env_var_name] = container_path
+        
         return env_vars
 
     def _parse_install_command(self, server: MCPServer) -> str:
