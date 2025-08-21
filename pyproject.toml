@@ -23,6 +23,7 @@ dependencies = [
     # Authentication
     "bcrypt>=4.0.0",
     "werkzeug>=3.0.0",
+    "cryptography>=41.0.0",
     # MCP and AI dependencies
     "fastmcp>=2.9.0",
     "llm-sandbox>=0.2.0",
