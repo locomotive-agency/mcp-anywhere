@@ -164,7 +164,7 @@ class ContainerManager:
         for secret_file in server.secret_files:
             if secret_file.is_active and secret_file.env_var_name:
                 # Path inside the container where the file will be mounted
-                container_path = f"/secrets/{secret_file.stored_filename}"
+                container_path = f"/secrets/{secret_file.original_filename}"
                 env_vars[secret_file.env_var_name] = container_path
         
         return env_vars
