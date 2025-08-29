@@ -10,7 +10,7 @@ from starlette.templating import Jinja2Templates
 
 from mcp_anywhere.claude_analyzer import AsyncClaudeAnalyzer
 from mcp_anywhere.container.manager import ContainerManager
-from mcp_anywhere.database import MCPServer, MCPServerTool, get_async_session
+from mcp_anywhere.database import MCPServer, MCPServerSecretFile, MCPServerTool, get_async_session
 from mcp_anywhere.database_utils import store_server_tools
 from mcp_anywhere.logging_config import get_logger
 from mcp_anywhere.web.forms import AnalyzeFormData, ServerFormData
@@ -88,8 +88,12 @@ async def server_detail(request: Request) -> HTMLResponse:
 
     try:
         async with get_async_session() as db_session:
-            # Get server
-            stmt = select(MCPServer).where(MCPServer.id == server_id)
+            # Get server with secret files
+            stmt = (
+                select(MCPServer)
+                .options(selectinload(MCPServer.secret_files))
+                .where(MCPServer.id == server_id)
+            )
             result = await db_session.execute(stmt)
             server = result.scalar_one_or_none()
 
@@ -147,7 +151,12 @@ async def delete_server(request: Request) -> RedirectResponse | HTMLResponse:
 
             server_name = server.name
 
-            # Delete the server (cascade will handle tools)
+            # Clean up secret files before deleting server
+            from mcp_anywhere.security.file_manager import SecureFileManager
+            file_manager = SecureFileManager()
+            file_manager.cleanup_server_files(server_id)
+
+            # Delete the server (cascade will handle tools and secret files)
             await db_session.delete(server)
             await db_session.commit()
 
