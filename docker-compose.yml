@@ -1,18 +1,13 @@
-version: '3.8'
 services:
   app:
     build: .
     ports:
       - "8000:8000"
     volumes:
-      - ./src:/app/src
-      - ./.data:/app/.data # Persist application data
-      - /lib/modules:/lib/modules:ro # Required for Docker-in-Docker
+      - app-data:/app/.data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     env_file:
       - .env
-    privileged: true # Required for Docker-in-Docker
-    cap_add:
-      - SYS_ADMIN
-      - NET_ADMIN
-    # depends_on:
-    #   - db # Remove if not using Postgres
+
+volumes:
+  app-data:
