@@ -118,6 +118,11 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# Documentation files to exclude
+docs/claude_notes.md
+docs/assets/*.mp4
+docs/assets/*.docx
+
 # mypy
 .mypy_cache/
 .dmypy.json
