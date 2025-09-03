@@ -152,6 +152,9 @@ Click on any server to view comprehensive details and manage its tools:
 **Environment Variables:**
 - All configured environment variables (keys hidden for security)
 
+**Secret Files:**
+- Uploaded credential files for secure container mounting
+
 ### Tool Management
 
 **Available Tools Section** shows each individual tool provided by the MCP server:
@@ -163,6 +166,41 @@ Click on any server to view comprehensive details and manage its tools:
 - **Individual Control**: Toggle each tool on/off independently
 - **Tool Prefixes**: Each server gets a unique prefix (e.g., `0123abcd`) 
 - **Tool Naming**: Tools are prefixed like `0123abcd_tool_name` to prevent conflicts
+
+## Secret File Management
+
+MCP Anywhere supports secure upload and management of credential files for MCP servers that require file-based authentication.
+
+### Supported File Types
+
+- **JSON credential files** (.json)
+- **PEM certificates and keys** (.pem, .key, .crt, .cert)
+- **PKCS12/PFX certificates** (.p12, .pfx)
+- **Java KeyStores** (.jks, .keystore)
+- **Configuration files** (.yaml, .yml, .xml, .txt)
+
+### Features
+
+- Files encrypted at rest using AES-128 (Fernet)
+- Maximum file size: 10MB
+- Files mounted as read-only volumes in containers
+- Environment variables automatically set with file paths
+- Automatic cleanup when servers are deleted
+
+### Upload Process
+
+1. Navigate to the server detail page
+2. Use the "Upload Secret File" form
+3. Specify an environment variable name (e.g., `GOOGLE_APPLICATION_CREDENTIALS`)
+4. Upload the credential file
+5. File automatically mounts when container starts
+
+### Security
+
+- Files stored encrypted in `DATA_DIR/secrets/<server_id>/`
+- Each server has isolated secret storage
+- Files only decrypted when mounting to containers
+- Container access is read-only
 
 ## Connecting Claude Desktop
 

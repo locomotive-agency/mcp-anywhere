@@ -27,6 +27,10 @@ class Config:
     # Data directory setting
     DATA_DIR = DATA_DIR
 
+    # Secrets directory
+    SECRETS_DIR = DATA_DIR / "secrets"
+    SECRETS_DIR.mkdir(exist_ok=True)
+
     # Session settings
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
     SESSION_MAX_AGE = int(os.environ.get("SESSION_MAX_AGE", "28800"))  # 8 hours default
@@ -39,7 +43,9 @@ class Config:
     WEB_PORT = int(os.environ.get("WEB_PORT", str(DEFAULT_PORT)))
 
     # JWT settings for OAuth
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "dev-jwt-secret-key-change-in-production")
+    JWT_SECRET_KEY = os.environ.get(
+        "JWT_SECRET_KEY", "dev-jwt-secret-key-change-in-production"
+    )
 
     # Database settings
     SQLALCHEMY_DATABASE_URI = os.environ.get(
@@ -51,7 +57,9 @@ class Config:
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
     # Claude settings
-    ANTHROPIC_MODEL_NAME = os.environ.get("ANTHROPIC_MODEL_NAME", "claude-sonnet-4-20250514")
+    ANTHROPIC_MODEL_NAME = os.environ.get(
+        "ANTHROPIC_MODEL_NAME", "claude-sonnet-4-20250514"
+    )
 
     # MCP Server settings
     # Base path users configure (may or may not include leading/trailing slashes)
@@ -70,8 +78,12 @@ class Config:
 
     # Server URL - configurable for different environments
     # Construct default SERVER_URL from DEFAULT_HOST and DEFAULT_PORT
-    _default_host_for_url = "localhost" if DEFAULT_HOST in ("0.0.0.0", "") else DEFAULT_HOST
-    SERVER_URL = os.environ.get("SERVER_URL", f"http://{_default_host_for_url}:{DEFAULT_PORT}")
+    _default_host_for_url = (
+        "localhost" if DEFAULT_HOST in ("0.0.0.0", "") else DEFAULT_HOST
+    )
+    SERVER_URL = os.environ.get(
+        "SERVER_URL", f"http://{_default_host_for_url}:{DEFAULT_PORT}"
+    )
 
     # Logging settings
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
@@ -84,4 +96,6 @@ class Config:
     MCP_PYTHON_IMAGE = os.environ.get("MCP_PYTHON_IMAGE", "python:3.11-slim")
     MCP_NODE_IMAGE = os.environ.get("MCP_NODE_IMAGE", "node:20-slim")
     DOCKER_TIMEOUT = int(os.environ.get("DOCKER_TIMEOUT", "300"))  # 5 minutes default
-    DEFAULT_SERVERS_FILE = os.environ.get("DEFAULT_SERVERS_FILE", "default_servers.json")
+    DEFAULT_SERVERS_FILE = os.environ.get(
+        "DEFAULT_SERVERS_FILE", "default_servers.json"
+    )

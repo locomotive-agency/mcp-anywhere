@@ -25,6 +25,7 @@ from mcp_anywhere.web.middleware import (
     RedirectMiddleware,
     SessionAuthMiddleware,
 )
+from mcp_anywhere.web.secret_routes import secret_file_routes
 
 logger = get_logger(__name__)
 
@@ -109,6 +110,7 @@ You can use tools/list to see all available tools from all mounted servers.
     app_routes.extend(
         [
             *config_routes,
+            *secret_file_routes,
             *routes.routes,
             # Static files mount
             Mount(

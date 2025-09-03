@@ -72,7 +72,9 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     # Add subcommands
-    subparsers = parser.add_subparsers(dest="command", help="Available commands", required=True)
+    subparsers = parser.add_subparsers(
+        dest="command", help="Available commands", required=True
+    )
 
     # Serve command - starts management server with MCP transport options
     serve_parser = subparsers.add_parser(
@@ -118,7 +120,9 @@ def create_parser() -> argparse.ArgumentParser:
     reset_parser = subparsers.add_parser(
         "reset", help="Reset application data including database and configuration"
     )
-    reset_parser.add_argument("--confirm", action="store_true", help="Skip confirmation prompt")
+    reset_parser.add_argument(
+        "--confirm", action="store_true", help="Skip confirmation prompt"
+    )
 
     return parser
 
@@ -143,7 +147,9 @@ def reset_data(confirm: bool = False) -> None:
         print("  - Container build cache and logs")
         print()
 
-        response = input("Are you sure you want to continue? (yes/no): ").strip().lower()
+        response = (
+            input("Are you sure you want to continue? (yes/no): ").strip().lower()
+        )
         if response not in ("yes", "y"):
             print("Reset cancelled.")
             return

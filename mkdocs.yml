@@ -3,25 +3,16 @@ site_description: A unified gateway for Model Context Protocol servers - discove
 site_url: https://mcpanywhere.com
 repo_url: https://github.com/locomotive-agency/mcp-anywhere
 repo_name: locomotive-agency/mcp-anywhere
-copyright: Copyright &copy; 2024 Locomotive Agency
+copyright: Copyright &copy; 2025 Locomotive Agency
 
 theme:
   name: material
   logo: assets/images/logo.png
   favicon: assets/images/favicon.ico
   palette:
-    - scheme: default
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - scheme: slate
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
+    scheme: default
+    primary: custom
+    accent: custom
   features:
     - navigation.instant
     - navigation.tracking

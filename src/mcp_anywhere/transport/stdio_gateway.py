@@ -55,7 +55,9 @@ async def run_connect_gateway() -> None:
             max_overflow=0,
         )
 
-        AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        AsyncSessionLocal = sessionmaker(
+            engine, class_=AsyncSession, expire_on_commit=False
+        )
 
         servers: list[MCPServer] = []
         async with AsyncSessionLocal() as session:

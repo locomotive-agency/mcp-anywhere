@@ -88,8 +88,12 @@ async def server_detail(request: Request) -> HTMLResponse:
 
     try:
         async with get_async_session() as db_session:
-            # Get server
-            stmt = select(MCPServer).where(MCPServer.id == server_id)
+            # Get server with secret files
+            stmt = (
+                select(MCPServer)
+                .options(selectinload(MCPServer.secret_files))
+                .where(MCPServer.id == server_id)
+            )
             result = await db_session.execute(stmt)
             server = result.scalar_one_or_none()
 
@@ -147,7 +151,13 @@ async def delete_server(request: Request) -> RedirectResponse | HTMLResponse:
 
             server_name = server.name
 
-            # Delete the server (cascade will handle tools)
+            # Clean up secret files before deleting server
+            from mcp_anywhere.security.file_manager import SecureFileManager
+
+            file_manager = SecureFileManager()
+            file_manager.cleanup_server_files(server_id)
+
+            # Delete the server (cascade will handle tools and secret files)
             await db_session.delete(server)
             await db_session.commit()
 
@@ -170,7 +180,9 @@ async def delete_server(request: Request) -> RedirectResponse | HTMLResponse:
 
 async def add_server_get(request: Request) -> HTMLResponse:
     """Display the add server form."""
-    return templates.TemplateResponse(request, "servers/add.html", get_template_context(request))
+    return templates.TemplateResponse(
+        request, "servers/add.html", get_template_context(request)
+    )
 
 
 async def edit_server_get(request: Request) -> HTMLResponse:
@@ -188,7 +200,9 @@ async def edit_server_get(request: Request) -> HTMLResponse:
                 return templates.TemplateResponse(
                     request,
                     "404.html",
-                    get_template_context(request, message=f"Server '{server_id}' not found"),
+                    get_template_context(
+                        request, message=f"Server '{server_id}' not found"
+                    ),
                     status_code=404,
                 )
 
@@ -265,7 +279,7 @@ async def edit_server_post(request: Request) -> HTMLResponse:
                         mcp_manager.remove_server(server.id)
                     except Exception as e:
                         logger.warning(f"Failed to remove old server {server.id}: {e}")
-                    
+
                     # Clean up any existing container before re-adding
                     container_name = container_manager._get_container_name(server.id)
                     container_manager._cleanup_existing_container(container_name)
@@ -334,7 +348,9 @@ async def create_server_post_form_data(form_data: FormData) -> ServerFormData:
         value = form_data.get(f"env_value_{key}", "")
         description = form_data.get(f"env_desc_{key}", "")
         if value:  # Only include env vars with values
-            env_variables.append({"key": key, "value": value, "description": description})
+            env_variables.append(
+                {"key": key, "value": value, "description": description}
+            )
     # New indexed format from analysis result template
     i = 0
     while True:
@@ -386,7 +402,9 @@ async def toggle_tool(request: Request) -> HTMLResponse:
                 return templates.TemplateResponse(
                     request,
                     "404.html",
-                    get_template_context(request, message=f"Tool '{tool_id}' not found"),
+                    get_template_context(
+                        request, message=f"Tool '{tool_id}' not found"
+                    ),
                     status_code=404,
                 )
 
@@ -394,7 +412,9 @@ async def toggle_tool(request: Request) -> HTMLResponse:
             tool.is_enabled = not tool.is_enabled
             await db_session.commit()
 
-            logger.info(f'Tool "{tool.tool_name}" {"enabled" if tool.is_enabled else "disabled"}')
+            logger.info(
+                f'Tool "{tool.tool_name}" {"enabled" if tool.is_enabled else "disabled"}'
+            )
 
         # Return just the updated toggle switch HTML for HTMX
         return templates.TemplateResponse(
@@ -459,9 +479,7 @@ async def handle_claude_config_error(
 ) -> HTMLResponse:
     """Handle Claude analyzer configuration errors."""
     logger.error(f"Claude analyzer configuration error: {error}")
-    error_msg = (
-        f"Repository analysis is not configured: {str(error)}. Please check your ANTHROPIC_API_KEY."
-    )
+    error_msg = f"Repository analysis is not configured: {str(error)}. Please check your ANTHROPIC_API_KEY."
 
     if request.headers.get("HX-Request"):
         return templates.TemplateResponse(
@@ -612,10 +630,14 @@ async def handle_analyze_repository(request: Request, form_data) -> HTMLResponse
             )
 
     except ValidationError as e:
-        return await handle_analyze_validation_error(request=request, form_data=form_data, error=e)
+        return await handle_analyze_validation_error(
+            request=request, form_data=form_data, error=e
+        )
 
     except (RuntimeError, ValueError, ConnectionError, ValidationError) as e:
-        return await handle_analyze_general_error(request=request, form_data=form_data, error=e)
+        return await handle_analyze_general_error(
+            request=request, form_data=form_data, error=e
+        )
 
 
 async def handle_save_server(request: Request, form_data) -> HTMLResponse:
@@ -654,6 +676,9 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
                 server.image_tag = image_tag
                 server.build_error = None
                 await db_session.commit()
+
+                # Refresh server with eager loading of relationships
+                await db_session.refresh(server, ["secret_files"])
 
                 # Add server to MCP manager and get tools
                 mcp_manager = get_mcp_manager(request)

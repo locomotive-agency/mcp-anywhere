@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.database import MCPServer
 from mcp_anywhere.logging_config import get_logger
+from mcp_anywhere.security.file_manager import SecureFileManager
 
 logger = get_logger(__name__)
 
@@ -46,13 +47,22 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
     # Configuration for new container (docker run)
     image_tag = container_manager.get_image_tag(server)
 
-    # Extract environment variables
+    # Extract environment variables (both regular and secret file paths)
+    env_vars = container_manager._get_env_vars(server)
     env_args = []
-    for env_var in server.env_variables:
-        if env_var.get("value"):
-            key = env_var["key"]
-            value = env_var["value"]
-            env_args.extend(["-e", f"{key}={value}"])
+    for key, value in env_vars.items():
+        env_args.extend(["-e", f"{key}={value}"])
+
+    # Prepare secret file volume mounts
+    volume_args = []
+    secret_files = getattr(server, "secret_files", [])
+
+    if len(secret_files) > 0:
+        file_manager = SecureFileManager()
+        container_files = file_manager.prepare_container_files(server.id, secret_files)
+
+        for host_path, container_path in container_files.items():
+            volume_args.extend(["-v", f"{host_path}:{container_path}:ro"])
 
     new_config = {
         "command": "docker",
@@ -67,6 +77,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
             "--cpus",
             "0.5",  # CPU limit
             *env_args,  # Environment variables
+            *volume_args,  # Secret file volume mounts
             image_tag,  # Our pre-built image
             *run_command,  # The actual MCP command
         ],
@@ -104,7 +115,9 @@ class MCPManager:
             config_options = create_mcp_config(server_config)
 
             if not config_options["new"] and not config_options["existing"]:
-                raise RuntimeError(f"Failed to create proxy config for {server_config.name}")
+                raise RuntimeError(
+                    f"Failed to create proxy config for {server_config.name}"
+                )
 
             # Check container health and select appropriate config
             container_manager = ContainerManager()
@@ -132,7 +145,7 @@ class MCPManager:
                 f"Successfully mounted server '{server_config.name}' with prefix '{prefix}'"
             )
 
-            # Discover and return tools for this newly added server
+            # Discover and return tools for existing containers
             return await self._discover_server_tools(server_config.id)
 
         except (RuntimeError, ValueError, ConnectionError, OSError) as e:
@@ -169,7 +182,9 @@ class MCPManager:
             # Remove from our tracking
             del self.mounted_servers[server_id]
 
-            logger.info(f"Successfully unmounted server '{server_id}' from all managers")
+            logger.info(
+                f"Successfully unmounted server '{server_id}' from all managers"
+            )
 
         except (RuntimeError, ValueError, KeyError) as e:
             logger.exception(f"Failed to remove server '{server_id}': {e}")
@@ -193,9 +208,13 @@ class MCPManager:
             # Convert tools to the format expected by the database
             discovered_tools = []
             for key, tool in tools.items():
-                discovered_tools.append({"name": key, "description": tool.description or ""})
+                discovered_tools.append(
+                    {"name": key, "description": tool.description or ""}
+                )
 
-            logger.info(f"Discovered {len(discovered_tools)} tools for server '{server_id}'")
+            logger.info(
+                f"Discovered {len(discovered_tools)} tools for server '{server_id}'"
+            )
             return discovered_tools
 
         except (RuntimeError, ValueError, ConnectionError, AttributeError) as e:

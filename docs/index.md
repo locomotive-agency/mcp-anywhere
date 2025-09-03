@@ -25,32 +25,30 @@ MCP Anywhere acts as an **all-in-one area for accessing the MCP servers that you
 
 <div class="feature-grid">
   <div class="feature-card">
-    <div class="icon">🤖</div>
     <h3>AI-Powered Discovery</h3>
     <p>Claude AI automatically analyzes GitHub repositories to determine setup requirements, runtime types, and configuration needs</p>
   </div>
   <div class="feature-card">
-    <div class="icon">🔐</div>
     <h3>Centralized Security</h3>
     <p>Store all API keys and credentials in one secure location with encrypted storage and proper access controls</p>
   </div>
   <div class="feature-card">
-    <div class="icon">🎛️</div>
+    <h3>Secret File Management</h3>
+    <p>Upload and manage credential files (JSON, PEM, certificates) with AES-128 encryption and automatic container mounting</p>
+  </div>
+  <div class="feature-card">
     <h3>Granular Control</h3>
     <p>Enable or disable individual tools from each server. Each tool gets a unique prefix to prevent naming conflicts</p>
   </div>
   <div class="feature-card">
-    <div class="icon">🐳</div>
     <h3>Docker Isolation</h3>
     <p>Every MCP server runs in its own isolated Docker container for maximum security and reliability</p>
   </div>
   <div class="feature-card">
-    <div class="icon">⚡</div>
     <h3>Multi-Runtime Support</h3>
     <p>Supports Docker, Node.js (npx), and Python (uvx) runtime environments with automatic detection</p>
   </div>
   <div class="feature-card">
-    <div class="icon">🔌</div>
     <h3>Universal Integration</h3>
     <p>Connect to Claude Desktop, OpenAI, custom applications, or any MCP-compatible client through a single endpoint</p>
   </div>

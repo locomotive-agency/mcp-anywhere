@@ -23,7 +23,9 @@ logger = get_logger(__name__)
 class AsyncClaudeAnalyzer:
     """Async version of ClaudeAnalyzer for use in async contexts."""
 
-    def __init__(self, api_key: str | None = None, github_token: str | None = None) -> None:
+    def __init__(
+        self, api_key: str | None = None, github_token: str | None = None
+    ) -> None:
         self.api_key = api_key or Config.ANTHROPIC_API_KEY
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY is required for AsyncClaudeAnalyzer")
@@ -35,7 +37,9 @@ class AsyncClaudeAnalyzer:
         """Analyze a GitHub repository and return a structured configuration."""
         match = re.match(r"https://github\.com/([^/]+)/([^/]+)", github_url)
         if not match:
-            raise ValueError("Invalid GitHub URL format. Expected: https://github.com/owner/repo")
+            raise ValueError(
+                "Invalid GitHub URL format. Expected: https://github.com/owner/repo"
+            )
 
         owner, repo = match.groups()
 
@@ -51,7 +55,10 @@ class AsyncClaudeAnalyzer:
 
             # Check for critical errors (non-404 HTTP errors)
             for result in results:
-                if isinstance(result, httpx.HTTPStatusError) and result.response.status_code != 404:
+                if (
+                    isinstance(result, httpx.HTTPStatusError)
+                    and result.response.status_code != 404
+                ):
                     logger.error(f"GitHub API error: {result}")
                     raise ConnectionError(
                         f"Failed to fetch files from GitHub: {result.response.status_code}"
@@ -170,6 +177,12 @@ IMPORTANT: The servers will run in containerized environments. Provide the full,
 5. **Description**: A brief, one-sentence description of the server's purpose.
 
 6. **Environment Variables**: List any required environment variables, their purpose, and if they are required.
+   IMPORTANT: DO NOT include environment variables that point to secret file locations such as:
+   - GOOGLE_APPLICATION_CREDENTIALS
+   - AWS_SHARED_CREDENTIALS_FILE
+   - KUBECONFIG
+   - Any variable ending in _FILE, _PATH, _CERT, _KEY, or _CREDENTIALS that refers to a file path
+   These file-based secrets should be configured through the secrets interface, not as environment variables.
 
 Respond in this exact, parsable format. Do not add any conversational text or pleasantries.
 
@@ -216,7 +229,9 @@ ENV_VARS:
                     # Extract key (required)
                     key_part = parts[0].split(":", 1)
                     if len(key_part) < 2:
-                        logger.warning(f"Could not parse env var line (missing key): {line}")
+                        logger.warning(
+                            f"Could not parse env var line (missing key): {line}"
+                        )
                         continue
                     key = key_part[1].strip()
 
@@ -226,7 +241,9 @@ ENV_VARS:
                         desc = parts[1].split(":", 1)[1].strip()
                     elif len(parts) > 1:
                         # Line has comma but no DESC: - this is malformed
-                        logger.warning(f"Could not parse env var line (malformed DESC): {line}")
+                        logger.warning(
+                            f"Could not parse env var line (malformed DESC): {line}"
+                        )
                         continue
 
                     # Extract required flag (optional, defaults to true)

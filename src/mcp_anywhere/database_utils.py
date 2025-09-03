@@ -48,7 +48,9 @@ async def store_server_tools(
             )
             db_session.add(new_tool)
 
-        logger.info(f"Added {len(tools_to_add)} tools for server '{server_config.name}'")
+        logger.info(
+            f"Added {len(tools_to_add)} tools for server '{server_config.name}'"
+        )
 
         # Remove tools that are no longer present
         if tools_to_remove:
@@ -58,10 +60,14 @@ async def store_server_tools(
             )
             await db_session.execute(stmt)
 
-        logger.info(f"Removed {len(tools_to_remove)} tools for server '{server_config.name}'")
+        logger.info(
+            f"Removed {len(tools_to_remove)} tools for server '{server_config.name}'"
+        )
 
         await db_session.commit()
-        logger.info(f"Stored {len(discovered_tools_dict)} tools for server '{server_config.name}'")
+        logger.info(
+            f"Stored {len(discovered_tools_dict)} tools for server '{server_config.name}'"
+        )
 
     except (RuntimeError, ValueError, ConnectionError, IntegrityError) as e:
         logger.exception(f"Database error storing tools for {server_config.name}: {e}")

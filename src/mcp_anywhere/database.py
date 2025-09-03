@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
 from mcp_anywhere.base import Base
 from mcp_anywhere.config import Config
@@ -29,19 +29,32 @@ class MCPServer(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     github_url: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    runtime_type: Mapped[str] = mapped_column(String(20), nullable=False)  # npx, uvx, docker
+    runtime_type: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # npx, uvx, docker
     install_command: Mapped[str] = mapped_column(Text, nullable=False, default="")
     start_command: Mapped[str] = mapped_column(Text, nullable=False)
-    env_variables: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    env_variables: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
-    build_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+    build_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )
     build_error: Mapped[str | None] = mapped_column(Text)
     image_tag: Mapped[str | None] = mapped_column(String(200))
 
     # Relationship to tools
     tools: Mapped[list["MCPServerTool"]] = relationship(
         back_populates="server", cascade="all, delete-orphan"
+    )
+
+    # Relationship to secret files
+    secret_files: Mapped[list["MCPServerSecretFile"]] = relationship(
+        back_populates="server", cascade="all, delete-orphan", lazy="selectin"
     )
 
     def __repr__(self) -> str:
@@ -72,18 +85,65 @@ class MCPServerTool(Base):
     __tablename__ = "mcp_server_tools"
 
     id: Mapped[str] = mapped_column(String(8), primary_key=True, default=generate_id)
-    server_id: Mapped[str] = mapped_column(String(8), ForeignKey("mcp_servers.id"), nullable=False)
+    server_id: Mapped[str] = mapped_column(
+        String(8), ForeignKey("mcp_servers.id"), nullable=False
+    )
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     tool_description: Mapped[str | None] = mapped_column(Text)
     tool_schema: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
 
     # Relationship back to server
     server: Mapped["MCPServer"] = relationship(back_populates="tools")
 
     def __repr__(self) -> str:
         return f"<MCPServerTool {self.tool_name}>"
+
+
+class MCPServerSecretFile(Base):
+    """Model for MCP server secret files."""
+
+    __tablename__ = "mcp_server_secret_files"
+
+    id: Mapped[str] = mapped_column(String(8), primary_key=True, default=generate_id)
+    server_id: Mapped[str] = mapped_column(
+        String(8), ForeignKey("mcp_servers.id"), nullable=False
+    )
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[str | None] = mapped_column(String(50))
+    file_size: Mapped[int | None] = mapped_column()
+    env_var_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=datetime.utcnow
+    )
+
+    # Relationship back to server
+    server: Mapped["MCPServer"] = relationship(back_populates="secret_files")
+
+    def __repr__(self) -> str:
+        return f"<MCPServerSecretFile {self.original_filename}>"
+
+    def to_dict(self) -> dict:
+        """Convert secret file to dictionary."""
+        return {
+            "id": self.id,
+            "server_id": self.server_id,
+            "original_filename": self.original_filename,
+            "stored_filename": self.stored_filename,
+            "file_type": self.file_type,
+            "file_size": self.file_size,
+            "env_var_name": self.env_var_name,
+            "description": self.description,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class DatabaseManager:
@@ -97,7 +157,9 @@ class DatabaseManager:
         """Initialize the async database."""
         if self._engine is None:
             # Create engine - use SQLALCHEMY_DATABASE_URI from config
-            db_url = Config.SQLALCHEMY_DATABASE_URI.replace("sqlite://", "sqlite+aiosqlite://")
+            db_url = Config.SQLALCHEMY_DATABASE_URI.replace(
+                "sqlite://", "sqlite+aiosqlite://"
+            )
             self._engine = create_async_engine(db_url)
 
             # Create session factory
@@ -156,13 +218,21 @@ async def get_active_servers(session: AsyncSession | None = None) -> list[MCPSer
     """Get all active servers (async equivalent of Flask-SQLAlchemy function)."""
     if session:
         # Use provided session
-        stmt = select(MCPServer).where(MCPServer.is_active)
+        stmt = (
+            select(MCPServer)
+            .where(MCPServer.is_active)
+            .options(selectinload(MCPServer.secret_files))
+        )
         result = await session.execute(stmt)
         return result.scalars().all()
     else:
         # Create own session
         async with get_async_session() as session:
-            stmt = select(MCPServer).where(MCPServer.is_active)
+            stmt = (
+                select(MCPServer)
+                .where(MCPServer.is_active)
+                .options(selectinload(MCPServer.secret_files))
+            )
             result = await session.execute(stmt)
             return result.scalars().all()
 
@@ -171,13 +241,21 @@ async def get_built_servers(session: AsyncSession | None = None) -> list[MCPServ
     """Get all built servers (async equivalent of Flask-SQLAlchemy function)."""
     if session:
         # Use provided session
-        stmt = select(MCPServer).where(MCPServer.build_status == "built")
+        stmt = (
+            select(MCPServer)
+            .where(MCPServer.build_status == "built")
+            .options(selectinload(MCPServer.secret_files))
+        )
         result = await session.execute(stmt)
         return result.scalars().all()
     else:
         # Create own session
         async with get_async_session() as session:
-            stmt = select(MCPServer).where(MCPServer.build_status == "built")
+            stmt = (
+                select(MCPServer)
+                .where(MCPServer.build_status == "built")
+                .options(selectinload(MCPServer.secret_files))
+            )
             result = await session.execute(stmt)
             return result.scalars().all()
 

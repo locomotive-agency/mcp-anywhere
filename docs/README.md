@@ -2,7 +2,7 @@
 
 This directory contains the documentation website for MCP Anywhere, built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
 
-## 📝 Updating the Documentation
+## Updating the Documentation
 
 ### Local Development
 
@@ -36,7 +36,7 @@ docs/
     └── images/           # Screenshots and logos
 ```
 
-## 🚀 Deploying Documentation Updates
+## Deploying Documentation Updates
 
 ### Automatic Deployment
 
@@ -62,7 +62,7 @@ mkdocs gh-deploy --force
 
 This builds the docs and pushes to the `gh-pages` branch.
 
-## 📖 GitHub Pages Tips
+## GitHub Pages Tips
 
 ### Initial Setup
 
@@ -108,17 +108,17 @@ For https://mcpanywhere.com:
 - Check that Pages is configured to use the gh-pages branch
 - Ensure DNS is properly configured for custom domains
 
-## 🎨 Theme Customization
+## Theme Customization
 
 The site uses MkDocs Material with:
 - **Primary color**: Custom mint green (`#00D4AA`)
 - **Logo**: `docs/assets/images/logo.png`
 - **Favicon**: `docs/assets/images/favicon.ico`
-- **Features**: Navigation tabs, search, dark/light mode
+- **Features**: Navigation tabs, search
 
 To modify the theme, edit the `theme` section in `mkdocs.yml`.
 
-## 📚 MkDocs Resources
+## MkDocs Resources
 
 - [MkDocs Material Documentation](https://squidfunk.github.io/mkdocs-material/)
 - [Markdown Syntax Guide](https://www.markdownguide.org/basic-syntax/)

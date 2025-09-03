@@ -137,6 +137,85 @@
     </div>
     {% endif %}
 
+    <!-- Secret Files Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold">Secret Files</h3>
+            <button onclick="toggleSecretFileForm()" 
+                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Add Secret File
+            </button>
+        </div>
+
+        <!-- Secret File Upload Form (Hidden by default) -->
+        <div id="secret-file-form" class="hidden mb-6 p-4 bg-gray-50 rounded-lg">
+            <form hx-post="/servers/{{ server.id }}/secrets" 
+                  hx-encoding="multipart/form-data"
+                  hx-target="#secret-files-list"
+                  hx-swap="outerHTML"
+                  hx-on::after-request="if(event.detail.successful) { toggleSecretFileForm(); this.reset(); }"
+                  class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="secret_file" class="block text-sm font-medium text-gray-700 mb-2">
+                            Secret File
+                        </label>
+                        <input type="file" 
+                               id="secret_file" 
+                               name="secret_file" 
+                               accept=".json,.pem,.p12,.pfx,.key,.crt,.cert,.txt,.yaml,.yml,.xml,.jks,.keystore"
+                               required
+                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <p class="mt-1 text-xs text-gray-500">
+                            Supported formats: JSON, PEM, P12, PFX, KEY, CRT, CERT, TXT, YAML, XML, JKS, KEYSTORE (max 10MB)
+                        </p>
+                    </div>
+                    <div>
+                        <label for="env_var_name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Environment Variable Name
+                        </label>
+                        <input type="text" 
+                               id="env_var_name" 
+                               name="env_var_name" 
+                               placeholder="e.g., GOOGLE_SERVICE_ACCOUNT_KEY"
+                               pattern="^[A-Z][A-Z0-9_]*$"
+                               title="Must start with a letter and contain only uppercase letters, numbers, and underscores"
+                               required
+                               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
+                        Description (Optional)
+                    </label>
+                    <input type="text" 
+                           id="description" 
+                           name="description" 
+                           placeholder="e.g., Google Cloud service account credentials"
+                           maxlength="500"
+                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" 
+                            onclick="toggleSecretFileForm()"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Upload File
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Secret Files List -->
+        {% include 'partials/secret_files_list.html' %}
+    </div>
+
     <!-- Tools Section -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
         <div class="flex items-center justify-between mb-6">
@@ -191,5 +270,17 @@
         </a>
     </div>
 </div>
+
+<script>
+function toggleSecretFileForm() {
+    const form = document.getElementById('secret-file-form');
+    form.classList.toggle('hidden');
+    
+    // Reset form when hiding
+    if (form.classList.contains('hidden')) {
+        form.querySelector('form').reset();
+    }
+}
+</script>
 
 {% endblock %}

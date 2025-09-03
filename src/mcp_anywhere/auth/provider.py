@@ -32,7 +32,9 @@ logger = get_logger(__name__)
 class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
     """OAuth 2.0 provider that integrates MCP SDK auth with our database with PKCE support."""
 
-    def __init__(self, db_session_factory: Callable[[], Awaitable[AsyncSession]]) -> None:
+    def __init__(
+        self, db_session_factory: Callable[[], Awaitable[AsyncSession]]
+    ) -> None:
         """Initialize with a database session factory."""
         self.db_session_factory = db_session_factory
         self.auth_codes = {}  # In-memory storage for demo, use DB in production
@@ -116,9 +118,9 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
             raise TokenError("invalid_grant")
 
         # Validate code parameters
-        if auth_code_data["client_id"] != client.client_id or auth_code_data["redirect_uri"] != str(
-            client.redirect_uris[0]
-        ):
+        if auth_code_data["client_id"] != client.client_id or auth_code_data[
+            "redirect_uri"
+        ] != str(client.redirect_uris[0]):
             raise TokenError("invalid_grant")
 
         # Note: PKCE verification is handled by the MCP SDK token handler before calling this method
@@ -167,7 +169,9 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
 
         return access_token
 
-    async def revoke_token(self, token: str, token_type_hint: str | None = None) -> bool:
+    async def revoke_token(
+        self, token: str, token_type_hint: str | None = None
+    ) -> bool:
         """Revoke an access token."""
         if token in self.access_tokens:
             del self.access_tokens[token]
@@ -203,7 +207,9 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
             # Convert database model to MCP SDK model and cache it
             client_info = OAuthClientInformationFull(
                 client_id=db_client.client_id,
-                client_secret=(db_client.client_secret if db_client.is_confidential else None),
+                client_secret=(
+                    db_client.client_secret if db_client.is_confidential else None
+                ),
                 client_name=db_client.client_name,
                 redirect_uris=[db_client.redirect_uri],
                 grant_types=["authorization_code"],

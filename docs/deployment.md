@@ -265,6 +265,6 @@ fly certs add mcpanywhere.com
 
 ---
 
-Your MCP Anywhere instance is now running in production! 🎉
+Your MCP Anywhere instance is now running in production.
 
 Users can now access your instance at your custom domain and add MCP servers through the web interface. The system will handle Docker container management, API key storage, and tool discovery automatically.

@@ -54,7 +54,9 @@ async def handle_login(request: Request) -> RedirectResponse:
             request.session["username"] = user.username
 
             # Redirect to original OAuth request or specified next URL
-            logger.info(f"User {username} logged in successfully, redirecting to: {next_url}")
+            logger.info(
+                f"User {username} logged in successfully, redirecting to: {next_url}"
+            )
             return RedirectResponse(url=next_url, status_code=302)
 
     # Login failed - preserve next URL in error redirect
@@ -134,7 +136,9 @@ async def handle_consent(request: Request) -> RedirectResponse:
     if action == "allow":
         # Generate authorization code
         try:
-            code = await provider.create_authorization_code(request=request, **oauth_request)
+            code = await provider.create_authorization_code(
+                request=request, **oauth_request
+            )
 
             # Build redirect URL
             redirect_uri = oauth_request["redirect_uri"]

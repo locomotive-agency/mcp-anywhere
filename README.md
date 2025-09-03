@@ -82,8 +82,40 @@ The system uses Claude AI to automatically analyze and configure repositories.
 ### Configuration
 
 - **API Keys**: Centralized credential storage
+- **Secret Files**: Secure upload and management of credential files (JSON, PEM, certificates)
 - **Tool Management**: Enable or disable specific tools
 - **Container Settings**: Automatic Docker containerization
+
+### Secret File Management
+
+MCP Anywhere supports secure upload and management of credential files for MCP servers:
+
+**Supported File Types:**
+- JSON credential files (.json)
+- PEM certificates and keys (.pem, .key, .crt, .cert)
+- PKCS12/PFX certificates (.p12, .pfx)
+- Java KeyStores (.jks, .keystore)
+- Configuration files (.yaml, .yml, .xml, .txt)
+
+**Features:**
+- Files are encrypted at rest using AES-128 (Fernet)
+- Maximum file size: 10MB
+- Files are mounted as read-only volumes in containers
+- Environment variables automatically set with file paths
+- Automatic cleanup when servers are deleted
+
+**Usage via Web Interface:**
+1. Navigate to the server detail page
+2. Use the "Upload Secret File" form
+3. Specify an environment variable name (e.g., `GOOGLE_APPLICATION_CREDENTIALS`)
+4. Upload the credential file
+5. The file will be automatically mounted when the container starts
+
+**Security Considerations:**
+- Files are stored encrypted in `DATA_DIR/secrets/<server_id>/`
+- Each server has isolated secret storage
+- Files are only decrypted when mounting to containers
+- Container access is read-only
 
 ### Client Integration
 
@@ -138,6 +170,7 @@ mcp-anywhere serve http --host 0.0.0.0 --port 8000
 - JWT-based API authentication
 - Docker container isolation for tool execution
 - Session-based authentication for web interface
+- Encrypted secret file storage (AES-128 with Fernet)
 
 ### Production Architecture
 - Asynchronous architecture (Starlette/FastAPI)

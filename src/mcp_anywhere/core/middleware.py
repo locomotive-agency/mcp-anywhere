@@ -49,7 +49,9 @@ class ToolFilterMiddleware(Middleware):
             return tools
 
         filtered = self._filter_tools(list(tools), disabled_tools)
-        logger.info(f"ToolFilterMiddleware: filtered tools to {len(filtered)} enabled items")
+        logger.info(
+            f"ToolFilterMiddleware: filtered tools to {len(filtered)} enabled items"
+        )
         return filtered
 
     @staticmethod
@@ -61,7 +63,9 @@ class ToolFilterMiddleware(Middleware):
         """
         disabled: set[str] = set()
         async with get_async_session() as db_session:
-            stmt = select(MCPServerTool.tool_name).where(MCPServerTool.is_enabled == False)
+            stmt = select(MCPServerTool.tool_name).where(
+                MCPServerTool.is_enabled == False
+            )
             result = await db_session.execute(stmt)
             for name in result.scalars().all():
                 disabled.add(name)

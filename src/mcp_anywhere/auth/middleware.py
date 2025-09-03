@@ -41,7 +41,9 @@ class JWTAuthMiddleware(BasePathProtectionMiddleware):
         self.token_verifier = TokenVerifier(secret_key=secret_key)
         self.required_scopes = required_scopes or []
 
-        logger.info(f"JWT Auth Middleware initialized with protected paths: {self.protected_paths}")
+        logger.info(
+            f"JWT Auth Middleware initialized with protected paths: {self.protected_paths}"
+        )
 
     def _create_auth_error_response(
         self, error: str, description: str = None, status_code: int = 401
@@ -84,18 +86,24 @@ class JWTAuthMiddleware(BasePathProtectionMiddleware):
 
         if not authorization_header:
             logger.warning(f"Missing Authorization header for protected path: {path}")
-            return self._create_auth_error_response("invalid_token", "Missing Authorization header")
+            return self._create_auth_error_response(
+                "invalid_token", "Missing Authorization header"
+            )
 
         # Verify the token
         token_payload = self.token_verifier.verify_bearer_token(authorization_header)
 
         if not token_payload:
             logger.warning(f"Invalid or expired token for path: {path}")
-            return self._create_auth_error_response("invalid_token", "Invalid or expired token")
+            return self._create_auth_error_response(
+                "invalid_token", "Invalid or expired token"
+            )
 
         # Check required scopes if specified
         if self.required_scopes:
-            if not self.token_verifier.has_all_scopes(token_payload, self.required_scopes):
+            if not self.token_verifier.has_all_scopes(
+                token_payload, self.required_scopes
+            ):
                 token_scopes = token_payload.get("scope", "").split()
                 logger.warning(
                     f"Insufficient scope for path: {path}. "
