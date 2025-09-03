@@ -291,9 +291,19 @@ async def edit_server_post(request: Request) -> HTMLResponse:
                 logger.info(f'Server "{server.name}" rebuilt successfully after edit!')
 
             except (RuntimeError, ValueError, ConnectionError, OSError) as e:
-                logger.exception(f"Failed to rebuild image for {server.name}: {e}")
+                # Check if this is a server startup error (credentials, config issues)
+                error_msg = str(e)
+                if "Server startup failed:" in error_msg:
+                    # Log credential/config errors without full backtrace
+                    logger.error(
+                        f"Server configuration error for {server.name}: {error_msg}"
+                    )
+                else:
+                    # Log unexpected errors with full backtrace for debugging
+                    logger.exception(f"Failed to rebuild image for {server.name}: {e}")
+
                 server.build_status = "failed"
-                server.build_error = str(e)
+                server.build_error = error_msg
                 await db_session.commit()
 
         # Redirect to server detail page (HTMX compatible)
@@ -326,7 +336,6 @@ async def edit_server_post(request: Request) -> HTMLResponse:
         RuntimeError,
         ValueError,
         ConnectionError,
-        ValidationError,
         IntegrityError,
     ) as e:
         logger.exception(f"Error updating server {server_id}: {e}")
@@ -634,7 +643,7 @@ async def handle_analyze_repository(request: Request, form_data) -> HTMLResponse
             request=request, form_data=form_data, error=e
         )
 
-    except (RuntimeError, ValueError, ConnectionError, ValidationError) as e:
+    except (RuntimeError, ValueError, ConnectionError) as e:
         return await handle_analyze_general_error(
             request=request, form_data=form_data, error=e
         )
@@ -692,9 +701,19 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
                 logger.info(f'Server "{server.name}" added and built successfully!')
 
             except (RuntimeError, ValueError, ConnectionError, OSError) as e:
-                logger.exception(f"Failed to build image for {server.name}: {e}")
+                # Check if this is a server startup error (credentials, config issues)
+                error_msg = str(e)
+                if "Server startup failed:" in error_msg:
+                    # Log credential/config errors without full backtrace
+                    logger.error(
+                        f"Server configuration error for {server.name}: {error_msg}"
+                    )
+                else:
+                    # Log unexpected errors with full backtrace for debugging
+                    logger.exception(f"Failed to build image for {server.name}: {e}")
+
                 server.build_status = "failed"
-                server.build_error = str(e)
+                server.build_error = error_msg
                 await db_session.commit()
 
             # Redirect to home page (HTMX compatible)
@@ -732,7 +751,6 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
         RuntimeError,
         ValueError,
         ConnectionError,
-        ValidationError,
         IntegrityError,
     ) as e:
         logger.exception(f"Error saving server: {e}")

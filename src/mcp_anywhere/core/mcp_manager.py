@@ -68,7 +68,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
         "command": "docker",
         "args": [
             "run",
-            "--rm",  # Remove container after exit
+            # "--rm",  # Do not remove container immediately on exit
             "-i",  # Interactive (for stdio)
             "--name",
             container_name,  # Container name
@@ -83,6 +83,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
         ],
         "env": {},  # Already passed via docker -e
         "transport": "stdio",
+        "init_timeout": 15,  # Add a 15-second initialization timeout
     }
 
     return {"new": new_config, "existing": existing_config}
@@ -110,47 +111,42 @@ class MCPManager:
         Returns:
             List of discovered tools from the server
         """
-        try:
-            # Get both configuration options
-            config_options = create_mcp_config(server_config)
+        # Get both configuration options
+        config_options = create_mcp_config(server_config)
 
-            if not config_options["new"] and not config_options["existing"]:
-                raise RuntimeError(
-                    f"Failed to create proxy config for {server_config.name}"
-                )
-
-            # Check container health and select appropriate config
-            container_manager = ContainerManager()
-            if container_manager._is_container_healthy(server_config):
-                server_config_dict = config_options["existing"]
-                logger.debug(f"Using existing container for {server_config.name}")
-            else:
-                server_config_dict = config_options["new"]
-                logger.debug(f"Using new container for {server_config.name}")
-
-            # Create proxy configuration in expected format
-            proxy_config = {"mcpServers": {server_config.name: server_config_dict}}
-
-            # Create FastMCP proxy for the server
-            proxy = FastMCP.as_proxy(proxy_config)
-
-            # Mount with 8-character prefix
-            prefix = server_config.id
-            self.router.mount(proxy, prefix=prefix)
-
-            # Track the mounted server
-            self.mounted_servers[server_config.id] = proxy
-
-            logger.info(
-                f"Successfully mounted server '{server_config.name}' with prefix '{prefix}'"
+        if not config_options["new"] and not config_options["existing"]:
+            raise RuntimeError(
+                f"Failed to create proxy config for {server_config.name}"
             )
 
-            # Discover and return tools for existing containers
-            return await self._discover_server_tools(server_config.id)
+        # Check container health and select appropriate config
+        container_manager = ContainerManager()
+        if container_manager._is_container_healthy(server_config):
+            server_config_dict = config_options["existing"]
+            logger.debug(f"Using existing container for {server_config.name}")
+        else:
+            server_config_dict = config_options["new"]
+            logger.debug(f"Using new container for {server_config.name}")
 
-        except (RuntimeError, ValueError, ConnectionError, OSError) as e:
-            logger.exception(f"Failed to add server '{server_config.name}': {e}")
-            raise
+        # Create proxy configuration in expected format
+        proxy_config = {"mcpServers": {server_config.name: server_config_dict}}
+
+        # Create FastMCP proxy for the server
+        proxy = FastMCP.as_proxy(proxy_config)
+
+        # Mount with 8-character prefix
+        prefix = server_config.id
+        self.router.mount(proxy, prefix=prefix)
+
+        # Track the mounted server
+        self.mounted_servers[server_config.id] = proxy
+
+        logger.info(
+            f"Successfully mounted server '{server_config.name}' with prefix '{prefix}'"
+        )
+
+        # Discover and return tools for existing containers
+        return await self._discover_server_tools(server_config.id)
 
     def remove_server(self, server_id: str) -> None:
         """Remove an MCP server dynamically by unmounting it from all managers."""
@@ -218,5 +214,21 @@ class MCPManager:
             return discovered_tools
 
         except (RuntimeError, ValueError, ConnectionError, AttributeError) as e:
-            logger.exception(f"Failed to discover tools for server '{server_id}': {e}")
-            return []
+            logger.error(f"Failed to discover tools for server '{server_id}': {e}")
+
+            # Check container logs for startup errors
+            container_manager = ContainerManager()
+            error_logs = container_manager.get_container_error_logs(server_id)
+
+            if error_logs:
+                # Try to extract a meaningful error message
+                error_msg = container_manager._extract_error_from_logs(error_logs)
+                if error_msg:
+                    logger.error(
+                        f"Container startup error for server '{server_id}': {error_msg}"
+                    )
+                    # Re-raise with the more meaningful error message
+                    raise RuntimeError(f"Server startup failed: {error_msg}")
+
+            # Re-raise the original error if no better error found
+            raise

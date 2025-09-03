@@ -7,8 +7,9 @@ Supports:
 
 import json
 import os
+import re
 import shlex
-from typing import Any
+from typing import Any, Optional
 
 import docker
 from docker import DockerClient
@@ -143,6 +144,101 @@ class ContainerManager:
             logger.exception(
                 f"Docker API error while cleaning up container '{container_name}': {e}"
             )
+
+    def get_container_error_logs(self, server_id: str, tail: int = 50) -> str:
+        """Get recent logs from a container to help diagnose startup issues.
+
+        Args:
+            server_id: The server ID to get logs for
+            tail: Number of recent log lines to retrieve
+
+        Returns:
+            String containing the container logs, or empty string if not available
+        """
+        container_name = self._get_container_name(server_id)
+        try:
+            # Try to get the container - include stopped containers
+            container = self.docker_client.containers.get(container_name)
+
+            # Get recent logs from both stdout and stderr
+            logs = (
+                container.logs(tail=tail, stderr=True, stdout=True, timestamps=False)
+                .decode("utf-8", errors="ignore")
+                .strip()
+            )
+
+            if logs:
+                logger.debug(
+                    f"Retrieved {len(logs.splitlines())} log lines from container {container_name}"
+                )
+                return logs
+            else:
+                logger.debug(f"No logs available from container {container_name}")
+                return ""
+
+        except NotFound:
+            logger.debug(f"Container {container_name} not found")
+            return ""
+        except (APIError, ConnectionError, OSError) as e:
+            logger.warning(f"Failed to get logs from container {container_name}: {e}")
+            return ""
+
+    def _extract_error_from_logs(self, logs: str) -> Optional[str]:
+        """Extract a meaningful error message from container logs.
+
+        Args:
+            logs: Raw container logs
+
+        Returns:
+            Extracted error message or None if no clear error found
+        """
+        if not logs:
+            return None
+
+        # Prioritized list of regex patterns to find the root cause of an error.
+        # The list is ordered from most specific (credentials, config) to most general.
+        error_patterns = [
+            # Credentials/auth errors (highest priority)
+            r"([\w\s]+credentials not found[^\n]+)",
+            r"(authentication failed[^\n]+)",
+            r"(api key[^\n]+missing[^\n]+)",
+            r"(api key[^\n]+not found[^\n]+)",
+            r"(environment variable[^\n]+not (set|found)[^\n]+)",
+            # Configuration errors
+            r"(configuration[^\n]+not found[^\n]+)",
+            r"(missing required[^\n]+)",
+            # General but clear errors
+            r"error:\s*([^\n]+)",
+            r"exception:\s*([^\n]+)",
+            r"failed to\s*([^\n]+)",
+            # Log-formatted errors
+            r"error\s+[-|:]\s*([^\n]+)",
+            r"\[error\]\s*([^\n]+)",
+        ]
+
+        def clean_message(msg: str) -> str:
+            """Cleans up a raw log line for display to the user."""
+            msg = msg.strip(" -|:")
+            # Remove timestamps, log levels, and module paths
+            msg = re.sub(
+                r"^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+\s*\|?\s*", "", msg
+            )
+            msg = re.sub(r"^(error|info|warning|debug)\s*[-|:]\s*", "", msg, flags=re.I)
+            msg = re.sub(r"^[\w\.]+:\w+:\d+\s*[-|]\s*", "", msg)
+            return msg.strip()
+
+        # Search for the first match from our prioritized list
+        for pattern in error_patterns:
+            # Find all matches in the entire log blob
+            matches = re.findall(pattern, logs, re.IGNORECASE | re.MULTILINE)
+            if matches:
+                # Use the last match found, as it's likely the most recent/relevant
+                last_match = matches[-1]
+                # Handle tuple results from regex groups
+                message = last_match if isinstance(last_match, str) else last_match[0]
+                return clean_message(message)
+
+        return None
 
     def _ensure_image_exists(self, image_name: str) -> None:
         """Checks if a Docker image exists locally and pulls it if not."""
@@ -512,9 +608,18 @@ class ContainerManager:
 
             async with get_async_session() as db_session:
                 for server in built_servers:
+                    # Always clean up a potentially lingering container from a previous failed run
+                    self._cleanup_existing_container(
+                        self._get_container_name(server.id)
+                    )
                     try:
                         # Add server to MCP manager and discover tools
                         discovered_tools = await mcp_manager.add_server(server)
+
+                        # Clear any previous errors on successful mount
+                        server.build_error = None
+                        await db_session.merge(server)
+                        await db_session.commit()
 
                         # Store discovered tools in database (even if empty for new containers)
                         if discovered_tools:
@@ -528,8 +633,25 @@ class ContainerManager:
                             logger.info(
                                 f"Successfully mounted server '{server.name}' (tools will be discovered on first use)"
                             )
-                    except (RuntimeError, ValueError, ConnectionError) as e:
-                        logger.exception(f"Failed to mount server '{server.name}': {e}")
+                    except (RuntimeError, ValueError, ConnectionError, OSError) as e:
+                        # The server failed to start, now we get the logs and store the error
+                        error_logs = self.get_container_error_logs(server.id)
+                        error_msg = self._extract_error_from_logs(error_logs)
+
+                        final_error = error_msg or str(e)
+                        server.build_error = final_error
+                        logger.error(
+                            f"Server '{server.name}' failed to start: {final_error}"
+                        )
+
+                        # Save the error to the database
+                        await db_session.merge(server)
+                        await db_session.commit()
+
+                        # Now that we've logged the error, clean up the failed container
+                        self._cleanup_existing_container(
+                            self._get_container_name(server.id)
+                        )
         else:
             logger.info("No built servers to mount.")
 

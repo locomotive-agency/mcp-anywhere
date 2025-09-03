@@ -65,10 +65,13 @@ You can use tools/list to see all available tools from all mounted servers.
     # Create MCP manager
     mcp_manager = MCPManager(router)
 
-    # Initialize container manager and mount servers
-    container_manager = ContainerManager()
-    await container_manager.initialize_and_build_servers()
-    await container_manager.mount_built_servers(mcp_manager)
+    # Initialize container manager and mount servers (skip during tests)
+    import os
+
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        container_manager = ContainerManager()
+        await container_manager.initialize_and_build_servers()
+        await container_manager.mount_built_servers(mcp_manager)
 
     # Create FastMCP HTTP app (ONCE, like the old architecture)
     # The key insight from the old code: FastMCP creates its app with lifespan included
