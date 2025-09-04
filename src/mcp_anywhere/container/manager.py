@@ -287,20 +287,28 @@ class ContainerManager:
 
         # For npx servers, we might need to transform the command
         if server.runtime_type == "npx":
+            # Optimization flags to reduce npm install size and speed
+            npm_flags = "--no-audit --omit=dev --no-optional"
+            
             # If user provides "npx @package", transform to proper install
             if cmd_parts[0] == "npx":
                 package = cmd_parts[1].strip()
-                # Add --no-audit flag to speed up npm install
-                return f"npm install -g --no-audit {package}"
+                # Add optimization flags to speed up npm install and reduce size
+                return f"npm install -g {npm_flags} {package}"
             # If already npm install, add optimization flags
             elif cmd_parts[0] == "npm" and cmd_parts[1] == "install":
-                # Add --no-audit if not already present
-                if "--no-audit" not in cmd:
-                    return cmd.replace("npm install", "npm install --no-audit")
+                # Check if optimization flags are already present
+                has_flags = any(flag in cmd for flag in ["--omit=dev", "--production", "--no-optional"])
+                if not has_flags:
+                    # Insert optimization flags after 'npm install' or 'npm install -g'
+                    if "-g" in cmd_parts:
+                        return cmd.replace("npm install -g", f"npm install -g {npm_flags}")
+                    else:
+                        return cmd.replace("npm install", f"npm install {npm_flags}")
                 return cmd
             # Otherwise assume it's a package name
             else:
-                return f"npm install -g --no-audit {cmd_parts[0]}"
+                return f"npm install -g {npm_flags} {cmd_parts[0]}"
 
         # For Python/uvx, ensure uv is installed first
         if server.runtime_type == "uvx":
@@ -439,7 +447,7 @@ class ContainerManager:
             return image_tag
 
         except (APIError, OSError, RuntimeError) as e:
-            logger.exception(f"Failed to build image for server {server.name}: {e}")
+            logger.error(f"Failed to build image for server {server.name}: {e}")
             raise
 
     def load_default_servers(
@@ -581,7 +589,7 @@ class ContainerManager:
                             f"Server {server.name} build_status set to: {server.build_status}"
                         )
                     except (APIError, OSError, RuntimeError, ValueError) as e:
-                        logger.exception(f"Failed to build {server.name}: {e}")
+                        logger.error(f"Failed to build {server.name}: {e}")
                         server.build_status = "failed"
                         server.build_logs = str(e)
                         await session.commit()

@@ -710,7 +710,7 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
                     )
                 else:
                     # Log unexpected errors with full backtrace for debugging
-                    logger.exception(f"Failed to build image for {server.name}: {e}")
+                    logger.error(f"Failed to build image for {server.name}: {e}")
 
                 server.build_status = "failed"
                 server.build_error = error_msg

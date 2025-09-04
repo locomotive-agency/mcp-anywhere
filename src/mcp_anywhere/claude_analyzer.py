@@ -164,13 +164,14 @@ IMPORTANT: The servers will run in containerized environments. Provide the full,
 
 1. **Runtime type**: Determine if this is 'npx' (for Node.js) or 'uvx' (for Python). Prioritize `pyproject.toml` for Python projects and `package.json` for Node.js projects.
 
-2. **Install command**: The full command to install the package/dependencies. This command will be run during the container build process.
-   - For npx packages: "npm install -g @org/package" (e.g., "npm install -g @ahrefs/mcp")
-   - For uvx packages: "pip install package-name" or "pip install -e ."
+  2. Install command: The full command to install the package/dependencies. This command will be run during the container build
+  process.
+  - For npx packages: "npm install -g @org/package" (e.g., "npm install -g @modelcontextprotocol/server-filesystem")
+  - For uvx packages: "uv tool install package-name" (e.g., "uv tool install mcp-server-git")
 
-3. **Start command**: The full command to run the server. This is the exact command you would type to start the server.
-   - For npx: "npx @org/package" (e.g., "npx @ahrefs/mcp")
-   - For uvx: "uvx package-name" or "python -m package"
+  3. Start command: The full command to run the server. This is the exact command you would type to start the server.
+  - For npx: "npx @org/package" (e.g., "npx @modelcontextprotocol/server-filesystem")
+  - For uvx: "uvx package-name" (e.g., "uvx mcp-server-git")
 
 4. **Server name**: A short, descriptive, machine-readable name for the server (e.g., "financial-data-api").
 
