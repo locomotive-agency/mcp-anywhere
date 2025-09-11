@@ -1195,10 +1195,12 @@
 <ul>
 <li><strong>Name</strong>: Unique name for the server  </li>
 <li><strong>Description</strong>: Description of the MCP server and its capabilities</li>
-<li><strong>Runtime Type</strong>: Choose from 3 options:</li>
+<li><strong>Runtime Type</strong>: Choose from 3 options:<ul>
 <li><strong>Docker</strong> (recommended for security)</li>
 <li><strong>npx</strong> (Node.js)</li>
 <li><strong>uvx</strong> (Python)</li>
+</ul>
+</li>
 <li><strong>Install Commands</strong>: Command to install dependencies (leave empty if none)</li>
 <li><strong>Start Command</strong>: Command to start the MCP server</li>
 <li><strong>Environment Variables</strong>: Any API keys or configuration the server needs</li>
@@ -1224,21 +1226,31 @@
   <img src="../assets/MCP Anywhere View Server 2.PNG" alt="Detailed Server Management">
 </div>
 
-<p><strong>Status Information:</strong>
-- <strong>Server Status</strong>: Current operational status
-- <strong>Build Status</strong>: What step in the build process the server is in</p>
-<p><strong>Configuration Details:</strong>
-- <strong>Runtime Type</strong>: Previously set runtime (Docker/npx/uvx)
-- <strong>GitHub URL</strong>: Source repository
-- <strong>Docker Image</strong>: Unique Docker image with suffix identifier
-- <strong>Created Date</strong>: When the server was set up</p>
-<p><strong>Commands:</strong>
-- <strong>Install Command</strong>: Dependency installation command
-- <strong>Start Command</strong>: Server startup command</p>
-<p><strong>Environment Variables:</strong>
-- All configured environment variables (keys hidden for security)</p>
-<p><strong>Secret Files:</strong>
-- Uploaded credential files for secure container mounting</p>
+<p><strong>Status Information:</strong></p>
+<ul>
+<li><strong>Server Status</strong>: Current operational status</li>
+<li><strong>Build Status</strong>: What step in the build process the server is in</li>
+</ul>
+<p><strong>Configuration Details:</strong></p>
+<ul>
+<li><strong>Runtime Type</strong>: Previously set runtime (Docker/npx/uvx)</li>
+<li><strong>GitHub URL</strong>: Source repository</li>
+<li><strong>Docker Image</strong>: Unique Docker image with suffix identifier</li>
+<li><strong>Created Date</strong>: When the server was set up</li>
+</ul>
+<p><strong>Commands:</strong></p>
+<ul>
+<li><strong>Install Command</strong>: Dependency installation command</li>
+<li><strong>Start Command</strong>: Server startup command</li>
+</ul>
+<p><strong>Environment Variables:</strong></p>
+<ul>
+<li>All configured environment variables (keys hidden for security)</li>
+</ul>
+<p><strong>Secret Files:</strong></p>
+<ul>
+<li>Uploaded credential files for secure container mounting</li>
+</ul>
 <h3 id="tool-management">Tool Management<a class="headerlink" href="#tool-management" title="Permanent link">&para;</a></h3>
 <p><strong>Available Tools Section</strong> shows each individual tool provided by the MCP server:</p>
 <div class="screenshot-container">
