@@ -68,6 +68,32 @@ fly deploy
 # Application available at https://your-app.fly.dev
 ```
 
+### Docker
+
+Deploying the application as a docker container using docker compose.
+
+```bash
+# Configure environment
+cp env.example .env
+# Edit .env with required values:
+# SECRET_KEY=<secure-random-key>
+# ANTHROPIC_API_KEY=<your-api-key>
+```
+
+Build and Deploy the application
+
+```bash
+$ docker compose -f docker-compose.native.yml up -d --build
+```
+
+View logs to see status
+
+```bash
+$ docker logs mcp-anywhere-app
+```
+
+Navigate to `http://<DOCKER-HOST>:8000/`
+
 ## Usage
 
 ### Adding Tools from GitHub

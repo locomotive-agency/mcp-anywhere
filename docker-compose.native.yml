@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.native
+    image: mcp-anywhere
+    container_name: mcp-anywhere-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-data:/app/.data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    stop_grace_period: 30s
+    env_file:
+      - .env
+
+volumes:
+  app-data:
