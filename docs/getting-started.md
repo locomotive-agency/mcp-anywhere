@@ -4,7 +4,7 @@ Get up and running with MCP Anywhere in a few simple steps.
 
 ## Prerequisites
 
-- Python 3.9 or higher
+- Python 3.11 or higher
 - Docker Desktop (for running MCP servers)
 - An Anthropic API key for Claude AI (for auto-configuration)
 
