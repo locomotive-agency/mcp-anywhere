@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 
 [[package]]
@@ -918,6 +918,7 @@ dependencies = [
     { name = "anthropic" },
     { name = "asyncpg" },
     { name = "bcrypt" },
+    { name = "cryptography" },
     { name = "docker" },
     { name = "fastmcp" },
     { name = "httpx" },
@@ -952,6 +953,7 @@ requires-dist = [
     { name = "anthropic" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "bcrypt", specifier = ">=4.0.0" },
+    { name = "cryptography", specifier = ">=41.0.0" },
     { name = "docker" },
     { name = "fastmcp", specifier = ">=2.9.0" },
     { name = "httpx", specifier = ">=0.27.2" },

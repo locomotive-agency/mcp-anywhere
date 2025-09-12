@@ -1,9 +1,8 @@
-# MCP Anywhere
-
 <div class="hero">
   <h1>MCP Anywhere</h1>
-  <p>A unified gateway for Model Context Protocol servers</p>
-  <p>Discover, configure, and access MCP tools from any GitHub repository through a single endpoint</p>
+  <p class="hero-tagline">A unified gateway for Model Context Protocol servers</p>
+  <p class="hero-description">Connect your team to your data, on your terms</p>
+  <p class="hero-subtitle"><em>A boilerplate for centralizing auth and hosting</em></p>
   <div class="hero-buttons">
     <a href="getting-started/" class="md-button">Get Started</a>
     <a href="https://github.com/locomotive-agency/mcp-anywhere" class="md-button md-button--secondary">View on GitHub</a>
@@ -64,6 +63,7 @@ https://github.com/modelcontextprotocol/servers
 ```
 
 MCP Anywhere will:
+
 1. Analyze the repository using Claude AI
 2. Detect runtime requirements (Node.js, Python, Docker) 
 3. Configure environment variables and API keys
@@ -111,4 +111,5 @@ Ready to get started? Follow our simple setup guide:
 ---
 
 **Current Version**: 0.8.0 (Beta)  
-**License**: See [LICENSE](https://github.com/locomotive-agency/mcp-anywhere/blob/main/LICENSE)
+**License**: See [LICENSE](https://github.com/locomotive-agency/mcp-anywhere/blob/main/LICENSE)  
+**Brought to you by**: [LOCOMOTIVE Agency](https://locomotive.agency)

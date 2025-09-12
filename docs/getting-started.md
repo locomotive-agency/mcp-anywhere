@@ -100,9 +100,9 @@ MCP Anywhere uses **Claude AI to analyze the GitHub repository** and determine h
 - **Name**: Unique name for the server  
 - **Description**: Description of the MCP server and its capabilities
 - **Runtime Type**: Choose from 3 options:
-  - **Docker** (recommended for security)
-  - **npx** (Node.js)
-  - **uvx** (Python)
+    - **Docker** (recommended for security)
+    - **npx** (Node.js)
+    - **uvx** (Python)
 - **Install Commands**: Command to install dependencies (leave empty if none)
 - **Start Command**: Command to start the MCP server
 - **Environment Variables**: Any API keys or configuration the server needs
@@ -136,23 +136,28 @@ Click on any server to view comprehensive details and manage its tools:
 </div>
 
 **Status Information:**
+
 - **Server Status**: Current operational status
 - **Build Status**: What step in the build process the server is in
 
 **Configuration Details:**
+
 - **Runtime Type**: Previously set runtime (Docker/npx/uvx)
 - **GitHub URL**: Source repository
 - **Docker Image**: Unique Docker image with suffix identifier
 - **Created Date**: When the server was set up
 
 **Commands:**
+
 - **Install Command**: Dependency installation command
 - **Start Command**: Server startup command
 
 **Environment Variables:**
+
 - All configured environment variables (keys hidden for security)
 
 **Secret Files:**
+
 - Uploaded credential files for secure container mounting
 
 ### Tool Management
