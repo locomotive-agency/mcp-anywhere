@@ -53,7 +53,22 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ### 3. Start MCP Anywhere
 
+If using uv:
+
 ```bash
+# Start HTTP server (includes web UI)
+uv run mcp-anywhere serve http
+
+# Or start STDIO server (for local Claude Desktop)
+uv run mcp-anywhere serve stdio
+```
+
+Otherwise, activate your venv first:
+
+```bash
+# Activate venv
+source .venv/bin/activate
+
 # Start HTTP server (includes web UI)
 mcp-anywhere serve http
 
