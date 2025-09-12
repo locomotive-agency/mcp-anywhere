@@ -663,12 +663,12 @@ class ContainerManager:
         else:
             logger.info("No built servers to mount.")
 
-    def cleanup_all_containers(self) -> None:
+    async def cleanup_all_containers(self) -> None:
         """Clean up all MCP server containers during shutdown."""
         try:
             # Get all active servers to find their container names
-            with get_async_session() as session:
-                servers = get_active_servers(session)
+            async with get_async_session() as session:
+                servers = await get_active_servers(session)
 
             if not servers:
                 logger.debug("No active servers found for cleanup.")

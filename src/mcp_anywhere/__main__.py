@@ -33,7 +33,7 @@ def setup_signal_handlers() -> None:
             _shutdown_requested = True
             logger.info("Shutdown requested. Cleaning up...")
             # Create a task to handle cleanup
-            cleanup_and_exit()
+            asyncio.get_event_loop().run_until_complete(cleanup_and_exit())
 
     # Handle SIGINT (Ctrl+C)
     signal.signal(signal.SIGINT, signal_handler)
@@ -41,15 +41,15 @@ def setup_signal_handlers() -> None:
     signal.signal(signal.SIGTERM, signal_handler)
 
 
-def cleanup_and_exit() -> None:
+async def cleanup_and_exit() -> None:
     """Perform cleanup tasks and exit gracefully."""
     try:
         # Clean up containers
         container_manager = ContainerManager()
-        container_manager.cleanup_all_containers()
+        await container_manager.cleanup_all_containers()
 
         # Close database connections
-        close_db()
+        await close_db()
         logger.info("Database connections closed.")
 
         logger.info("Shutdown complete.")
