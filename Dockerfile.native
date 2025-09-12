@@ -1,6 +1,6 @@
 FROM python:3.10-alpine3.22
 
-RUN apk update && apk add --no-cache tini python3 git fuse-overlayfs tini nodejs-current npm docker-cli
+RUN apk update && apk add --no-cache tini git fuse-overlayfs tini nodejs-current npm docker-cli
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 

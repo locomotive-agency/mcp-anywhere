@@ -92,7 +92,7 @@ View logs to see status
 $ docker logs mcp-anywhere-app
 ```
 
-Navigate to `http://<DOCKER-HOST>:8000/`
+Navigate to `http://<DOCKER-HOST>:8000/` to use the application
 
 ## Usage
 
