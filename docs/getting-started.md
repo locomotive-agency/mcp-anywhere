@@ -36,6 +36,7 @@ Edit `.env` with your configuration:
 ```bash
 # Required
 SECRET_KEY=your-secure-random-key-here
+JWT_SECRET_KEY=your-secure-random-key-here
 ANTHROPIC_API_KEY=your-anthropic-api-key-here
 
 # Optional
