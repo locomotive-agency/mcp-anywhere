@@ -1,9 +1,5 @@
 FROM python:3.10-alpine3.22
 
-STOPSIGNAL SIGTERM
-
-ENV PYTHONUNBUFFERED=1
-
 RUN apk update && apk add --no-cache tini git fuse-overlayfs tini nodejs-current npm docker-cli
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
