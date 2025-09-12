@@ -230,5 +230,10 @@ async def main() -> None:
         sys.exit(1)
 
 
+def run_cli() -> None:
+    """Synchronous entry point for CLI that properly handles async main."""
+    asyncio.run(main())
+
+
 if __name__ == "__main__":
     asyncio.run(main())

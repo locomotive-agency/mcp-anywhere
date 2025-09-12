@@ -53,7 +53,7 @@ dev = [
 ]
 
 [project.scripts]
-mcp-anywhere = "mcp_anywhere.__main__:main"
+mcp-anywhere = "mcp_anywhere.__main__:run_cli"
 
 [tool.ruff]
 line-length = 100
