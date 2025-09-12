@@ -214,6 +214,7 @@ async def main() -> None:
             try:
                 # Clean up containers
                 container_manager = ContainerManager()
+                print("\nCleaning Containers...")
                 await container_manager.cleanup_all_containers()
 
                 # Close database connections
