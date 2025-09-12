@@ -8,7 +8,7 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN uv sync --no-dev
+RUN uv sync --locked --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"
 
