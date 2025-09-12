@@ -208,9 +208,9 @@ def get_async_session() -> AsyncSession:
     return db_manager.get_session()
 
 
-async def close_db() -> None:
+def close_db() -> None:
     """Close the database connection."""
-    await db_manager.close()
+    db_manager.close()
 
 
 # Async helper functions to replace Flask-SQLAlchemy equivalents
