@@ -33,7 +33,9 @@ def setup_signal_handlers() -> None:
             _shutdown_requested = True
             logger.info("Shutdown requested. Cleaning up...")
             # Create a task to handle cleanup
-            cleanup_and_exit()
+            loop = asyncio.get_event_loop()
+            cleanup_task = asyncio.create_task(cleanup_and_exit())
+            loop.run_until_complete(cleanup_task)
 
     # Handle SIGINT (Ctrl+C)
     signal.signal(signal.SIGINT, signal_handler)
