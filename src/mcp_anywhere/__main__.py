@@ -28,7 +28,7 @@ def setup_signal_handlers(loop) -> None:
     """Setup signal handlers for graceful shutdown."""
 
     for sig in [signal.SIGINT, signal.SIGTERM]:
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(cleanup_and_exit(loop, sig)))
+        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(cleanup_and_exit(loop, s)))
 
 
 async def cleanup_and_exit(loop, sig) -> None:
@@ -43,12 +43,13 @@ async def cleanup_and_exit(loop, sig) -> None:
         logger.info("Database connections closed.")
 
         logger.info("Shutdown complete.")
-        loop.remove_signal_handler(sig)
+
     except asyncio.CancelledError:
         logger.error("Cleanup Task Cancelled.")
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
-
+    finally:
+        loop.remove_signal_handler(sig)
 
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser for MCP Anywhere CLI.
@@ -173,7 +174,7 @@ async def main() -> None:
         parser = create_parser()
         args = parser.parse_args()
 
-        setup_signal_handlers(asyncio.get_event_loop())
+        setup_signal_handlers(asyncio.get_running_loop())
 
         # Handle reset command (synchronous)
         if args.command == "reset":
