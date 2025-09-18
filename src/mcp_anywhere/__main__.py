@@ -27,7 +27,7 @@ _shutdown_requested = False
 def setup_signal_handlers(loop) -> None:
     """Setup signal handlers for graceful shutdown."""
 
-    for sig in [signal.SIGINT]:
+    for sig in [signal.SIGINT, signal.SIGTERM]:
         loop.add_signal_handler(sig, lambda: asyncio.create_task(cleanup_and_exit(loop, sig)))
 
 
