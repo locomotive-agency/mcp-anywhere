@@ -24,21 +24,11 @@ logger = get_logger(__name__)
 _shutdown_requested = False
 
 
-def setup_signal_handlers() -> None:
+def setup_signal_handlers(loop) -> None:
     """Setup signal handlers for graceful shutdown."""
 
-    def signal_handler(signum: int, frame) -> None:
-        global _shutdown_requested
-        if not _shutdown_requested:
-            _shutdown_requested = True
-            logger.info("Shutdown requested. Cleaning up...")
-            # Create a task to handle cleanup
-            asyncio.get_event_loop().run_until_complete(cleanup_and_exit())
-
-    # Handle SIGINT (Ctrl+C)
-    signal.signal(signal.SIGINT, signal_handler)
-    # Handle SIGTERM (docker stop, etc)
-    signal.signal(signal.SIGTERM, signal_handler)
+    for sig in [signal.SIGINT]:
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(cleanup_and_exit()))
 
 
 async def cleanup_and_exit() -> None:
@@ -53,11 +43,10 @@ async def cleanup_and_exit() -> None:
         logger.info("Database connections closed.")
 
         logger.info("Shutdown complete.")
+    except asyncio.CancelledError:
+        logger.error("Cleanup Task Cancelled.")
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
-    finally:
-        # Force exit after cleanup
-        sys.exit(0)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -183,14 +172,12 @@ async def main() -> None:
         parser = create_parser()
         args = parser.parse_args()
 
+        setup_signal_handlers(asyncio.get_event_loop())
+
         # Handle reset command (synchronous)
         if args.command == "reset":
             reset_data(confirm=args.confirm)
             return
-
-        # Setup signal handlers for graceful shutdown (only for server modes)
-        if args.command == "serve":
-            setup_signal_handlers()
 
         # Handle serve command (asynchronous)
         if args.command == "serve":
@@ -206,22 +193,6 @@ async def main() -> None:
         else:
             # This should not be reachable due to argparse configuration
             raise ValueError(f"Invalid command: {args.command}")
-
-    except KeyboardInterrupt:
-        # Graceful shutdown message
-        if not _shutdown_requested:
-            print("\nShutting down...")
-            try:
-                # Clean up containers
-                container_manager = ContainerManager()
-                await container_manager.cleanup_all_containers()
-
-                # Close database connections
-                await close_db()
-                print("Database connections closed.")
-                print("Shutdown complete.")
-            except Exception as e:
-                logger.error(f"Error during cleanup: {e}")
 
     except (ValueError, RuntimeError, ConnectionError) as e:
         # Only show errors for non-connect modes
