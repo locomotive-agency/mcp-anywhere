@@ -28,10 +28,10 @@ def setup_signal_handlers(loop) -> None:
     """Setup signal handlers for graceful shutdown."""
 
     for sig in [signal.SIGINT]:
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(cleanup_and_exit()))
+        loop.add_signal_handler(sig, lambda: asyncio.create_task(cleanup_and_exit(loop, sig)))
 
 
-async def cleanup_and_exit() -> None:
+async def cleanup_and_exit(loop, sig) -> None:
     """Perform cleanup tasks and exit gracefully."""
     try:
         # Clean up containers
@@ -43,6 +43,7 @@ async def cleanup_and_exit() -> None:
         logger.info("Database connections closed.")
 
         logger.info("Shutdown complete.")
+        loop.remove_signal_handler(sig)
     except asyncio.CancelledError:
         logger.error("Cleanup Task Cancelled.")
     except Exception as e:
