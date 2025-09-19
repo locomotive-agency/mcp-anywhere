@@ -227,7 +227,13 @@ MCP Anywhere supports secure upload and management of credential files for MCP s
 
 ### 1. Configure Claude Desktop
 
-Add to your Claude Desktop configuration:
+First run `which uv`, which will print out a path to the uv binary. For example on macOS:
+
+```
+/Users/yourname/.local/bin/uv
+```
+
+You can then use that in the start command. Change the `--directory` path to your MCP Anywhere clone path.
 
 === "macOS"
     Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
@@ -235,8 +241,8 @@ Add to your Claude Desktop configuration:
     {
       "mcpServers": {
         "mcp-anywhere": {
-          "command": "mcp-anywhere",
-          "args": ["connect"]
+          "command": "/path/to/uv",
+          "args": ["run", "--directory", "/Users/yourname/Projects/mcp-anywhere", "mcp-anywhere", "connect"]
         }
       }
     }
@@ -248,20 +254,28 @@ Add to your Claude Desktop configuration:
     {
       "mcpServers": {
         "mcp-anywhere": {
-          "command": "mcp-anywhere",
-          "args": ["connect"]
+          "command": "C:\path\to\uv",
+          "args": ["run", "--directory", "C:\Users\yourname\Projects\mcp-anywhere", "mcp-anywhere", "connect"]
         }
       }
     }
     ```
 
-### 2. Restart Claude Desktop
+### 2. Start MCP Anywhere
+
+Run the following command from the MCP Anywhere project directory to start in stdio mode:
+
+```bash
+uv run mcp-anywhere serve stdio
+```
+
+### 3. Restart Claude Desktop
 
 1. Quit Claude Desktop completely  
 2. Restart the application
 3. Your MCP tools should now be available
 
-### 3. Test Your Setup
+### 4. Test Your Setup
 
 In Claude Desktop, ask: *"What MCP tools do I have available?"*
 
