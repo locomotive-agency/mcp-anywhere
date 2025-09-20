@@ -99,3 +99,7 @@ class Config:
     DEFAULT_SERVERS_FILE = os.environ.get(
         "DEFAULT_SERVERS_FILE", "default_servers.json"
     )
+
+    # Google OAuth settings
+    GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+    GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
