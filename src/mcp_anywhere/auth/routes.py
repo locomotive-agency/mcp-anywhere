@@ -1,7 +1,7 @@
 """OAuth routes using MCP SDK's auth module.
 Provides all required endpoints including .well-known discovery.
 """
-
+from authlib.integrations.starlette_client import OAuth
 from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from sqlalchemy import select
@@ -24,6 +24,21 @@ from pathlib import Path
 template_dir = Path(__file__).parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(template_dir))
 
+oauth = OAuth()
+
+CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+
+oauth.register(
+    name='google',
+    client_id=Config.GOOGLE_OAUTH_CLIENT_ID,
+    client_secret=Config.GOOGLE_OAUTH_CLIENT_SECRET,
+    server_metadata_url=CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile',
+        'prompt': 'select_account',  # force to select account
+    }
+)
+
 
 async def login_page(request: Request) -> HTMLResponse:
     """Render the login page."""
@@ -33,6 +48,22 @@ async def login_page(request: Request) -> HTMLResponse:
         request, "auth/login.html", {"error": error, "next_url": next_url}
     )
 
+async def google_oauth_login(request: Request) -> RedirectResponse:
+
+    redirect_uri=Config.GOOGLE_OAUTH_REDIRECT_URI
+
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+async def google_oauth_handle(request: Request) -> RedirectResponse:
+
+    token = await oauth.google.authorize_access_token(request)
+
+    user = token.get('userinfo')
+
+    if user:
+        request.session['user'] = user
+
+    return RedirectResponse(url='/')
 
 async def handle_login(request: Request) -> RedirectResponse:
     """Process login form submission."""
@@ -240,5 +271,8 @@ def create_oauth_http_routes(get_async_session, oauth_provider=None) -> list[Rou
     mcp_routes.append(Route("/auth/consent", endpoint=consent_page, methods=["GET"]))
     mcp_routes.append(Route("/auth/consent", endpoint=handle_consent, methods=["POST"]))
     mcp_routes.append(Route("/auth/logout", endpoint=handle_logout, methods=["POST"]))
+
+    mcp_routes.append(Route("/auth/google", endpoint=google_oauth_login, methods=["GET"]))
+    mcp_routes.append(Route("/auth/callback", endpoint=google_oauth_handle, methods=["GET"]))
 
     return mcp_routes
