@@ -143,15 +143,30 @@ MCP Anywhere supports secure upload and management of credential files for MCP s
 ### Client Integration
 
 **Claude Desktop Configuration:**
+
+First run `which uv`, which will print out a path to the uv binary. For example on macOS:
+
+```
+/Users/yourname/.local/bin/uv
+```
+
+You can then use that in the start command. Change the `--directory` path to your MCP Anywhere clone path.
+
 ```json
 {
   "mcpServers": {
     "mcp-anywhere": {
-      "command": "mcp-anywhere",
-      "args": ["connect"]
+      "command": "/Users/yourname/.local/bin/uv",
+      "args": ["run", "--directory", "/Users/yourname/Projects/mcp-anywhere", "mcp-anywhere", "connect"]
     }
   }
 }
+```
+
+Lastly, set up the MCP Anywhere application before starting Claude Desktop:
+
+```bash
+uv run mcp-anywhere serve stdio
 ```
 
 **HTTP API Integration:**
