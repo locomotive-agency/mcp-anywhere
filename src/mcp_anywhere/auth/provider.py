@@ -406,29 +406,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.clients[client_info.client_id] = client_info
 
-        # Also persist to database
-        client_id = client_info.client_id
-        client_secret = client_info.client_secret  # Keep None for public clients
-        client_name = client_info.client_name or "Unknown Client"
-        redirect_uris = [str(url) for url in (client_info.redirect_uris or [])]
-        scope = client_info.scope or "mcp:read mcp:write"
-
-        # Determine if client is confidential (has a secret)
-        is_confidential = client_secret is not None
-
-        async with self.db_session_factory() as session:
-            client = OAuth2Client(
-                client_id=client_id,
-                client_secret=client_secret,
-                client_name=client_name,
-                redirect_uri=redirect_uris[0] if redirect_uris else "",
-                scope=scope,
-                is_confidential=is_confidential,
-            )
-            session.add(client)
-            await session.commit()
-            logger.info(f"Successfully registered and cached Google OAuth client {client_id}")
-
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         """Generate an authorization URL for Google OAuth flow."""
 
