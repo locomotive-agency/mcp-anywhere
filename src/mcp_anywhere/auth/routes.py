@@ -5,6 +5,7 @@ from authlib.integrations.starlette_client import OAuth
 from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from sqlalchemy import select
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.routing import Route
@@ -24,22 +25,6 @@ from pathlib import Path
 template_dir = Path(__file__).parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(template_dir))
 
-oauth = OAuth()
-
-CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
-
-oauth.register(
-    name='google',
-    client_id=Config.GOOGLE_OAUTH_CLIENT_ID,
-    client_secret=Config.GOOGLE_OAUTH_CLIENT_SECRET,
-    server_metadata_url=CONF_URL,
-    client_kwargs={
-        'scope': 'openid email profile',
-        'prompt': 'select_account',  # force to select account
-    }
-)
-
-
 async def login_page(request: Request) -> HTMLResponse:
     """Render the login page."""
     error = request.query_params.get("error")
@@ -47,23 +32,6 @@ async def login_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request, "auth/login.html", {"error": error, "next_url": next_url}
     )
-
-async def google_oauth_login(request: Request) -> RedirectResponse:
-
-    redirect_uri=Config.GOOGLE_OAUTH_REDIRECT_URI
-
-    return await oauth.google.authorize_redirect(request, redirect_uri)
-
-async def google_oauth_handle(request: Request) -> RedirectResponse:
-
-    token = await oauth.google.authorize_access_token(request)
-
-    user = token.get('userinfo')
-
-    if user:
-        request.session['user'] = user
-
-    return RedirectResponse(url='/')
 
 async def handle_login(request: Request) -> RedirectResponse:
     """Process login form submission."""
@@ -218,6 +186,25 @@ async def handle_consent(request: Request) -> RedirectResponse:
 
     return RedirectResponse(url=redirect_url, status_code=302)
 
+async def handle_oauth_callback(request: Request) -> RedirectResponse:
+
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+
+    if not code or not state:
+        raise HTTPException(400, "Missing code or state parameter")
+
+    oauth_provider = request.app.state.oauth_provider
+
+    try:
+        redirect_uri = await oauth_provider.handle_callback(code, state)
+        return RedirectResponse(status_code=302, url=redirect_uri)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Unexpected error", exc_info=e)
+        return RedirectResponse(status_code=500, url=request.url)
+
 
 async def handle_logout(request: Request) -> RedirectResponse:
     """Process logout and clear session."""
@@ -272,7 +259,7 @@ def create_oauth_http_routes(get_async_session, oauth_provider=None) -> list[Rou
     mcp_routes.append(Route("/auth/consent", endpoint=handle_consent, methods=["POST"]))
     mcp_routes.append(Route("/auth/logout", endpoint=handle_logout, methods=["POST"]))
 
-    mcp_routes.append(Route("/auth/google", endpoint=google_oauth_login, methods=["GET"]))
-    mcp_routes.append(Route("/auth/callback", endpoint=google_oauth_handle, methods=["GET"]))
+    # Google OAuth routes
+    mcp_routes.append(Route("/auth/callback", endpoint=handle_oauth_callback, methods=["GET"]))
 
     return mcp_routes

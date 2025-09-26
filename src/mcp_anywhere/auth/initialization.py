@@ -124,8 +124,8 @@ async def create_default_oauth_client(
 async def initialize_oauth_data(
     admin_username: str = "admin",
     admin_password: str = None,
-    client_id: str = Config.GOOGLE_OAUTH_CLIENT_ID,
-    client_secret: str = Config.GOOGLE_OAUTH_CLIENT_SECRET,
+    client_id: str = None,
+    client_secret: str = None,
     redirect_uri: str = None,
 ) -> tuple[User, OAuth2Client]:
     """Initialize default OAuth data (admin user and OAuth client).

@@ -4,6 +4,7 @@ Uses the MCP auth module for spec-compliant OAuth 2.0 flows with PKCE support.
 
 import secrets
 import time
+import urllib.parse
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -15,11 +16,14 @@ from mcp.server.auth.provider import (
     OAuthAuthorizationServerProvider,
     OAuthClientInformationFull,
     RefreshToken,
-    TokenError,
+    TokenError, construct_redirect_uri,
 )
+from mcp.shared._httpx_utils import create_mcp_http_client
 from mcp.shared.auth import OAuthToken
+from pydantic import AnyHttpUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 from mcp_anywhere.auth.models import OAuth2Client
@@ -374,3 +378,213 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
             session.add(client)
             await session.commit()
             logger.info(f"Successfully registered and cached client {client_id}")
+
+
+class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
+    """Simple Google OAuth provider with essential functionality."""
+
+    def __init__(self, db_session_factory: Callable[[], Awaitable[AsyncSession]]):
+        self.db_session_factory = db_session_factory
+        self.clients: dict[str, OAuthClientInformationFull] = {}
+        self.auth_codes: dict[str, AuthorizationCode] = {}
+        self.tokens: dict[str, AccessToken] = {}
+        self.state_mapping: dict[str, dict[str, str]] = {}
+        self.token_mapping: dict[str, str] = {}
+
+    async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
+        """Get OAuth client information."""
+        return self.clients.get(client_id)
+
+    async def register_client(self, client_info: OAuthClientInformationFull):
+        """Register a new Google OAuth client.
+
+        Args:
+            client_info: Complete client information including client_id from env.
+        """
+
+        logger.info(f"Registering Google OAuth client: {client_info.client_id}")
+
+        self.clients[client_info.client_id] = client_info
+
+        # Also persist to database
+        client_id = client_info.client_id
+        client_secret = client_info.client_secret  # Keep None for public clients
+        client_name = client_info.client_name or "Unknown Client"
+        redirect_uris = [str(url) for url in (client_info.redirect_uris or [])]
+        scope = client_info.scope or "mcp:read mcp:write"
+
+        # Determine if client is confidential (has a secret)
+        is_confidential = client_secret is not None
+
+        async with self.db_session_factory() as session:
+            client = OAuth2Client(
+                client_id=client_id,
+                client_secret=client_secret,
+                client_name=client_name,
+                redirect_uri=redirect_uris[0] if redirect_uris else "",
+                scope=scope,
+                is_confidential=is_confidential,
+            )
+            session.add(client)
+            await session.commit()
+            logger.info(f"Successfully registered and cached Google OAuth client {client_id}")
+
+    async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
+        """Generate an authorization URL for Google OAuth flow."""
+
+        state = params.state or secrets.token_hex(16)
+
+        self.state_mapping[state] = {
+            "redirect_uri": str(params.redirect_uri),
+            "code_challenge": params.code_challenge,
+            "redirect_uri_provided_explicitly": str(params.redirect_uri_provided_explicitly),
+            "client_id": client.client_id,
+        }
+
+        auth_url = (
+            f"{Config.GOOGLE_OAUTH_AUTH_URL}"
+            f"?client_id={Config.GOOGLE_OAUTH_CLIENT_ID}"
+            f"&redirect_uri={Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
+            f"&response_type=code"
+            f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
+            f"&state={state}"
+        )
+
+        return auth_url
+
+    async def handle_callback(self, code: str, state: str) -> str:
+        """Handle Google OAuth callback."""
+
+        state_data = self.state_mapping.get(state)
+
+        if not state_data:
+            raise HTTPException(400, "Invalid state parameter")
+
+        redirect_uri = state_data["redirect_uri"]
+        code_challenge = state_data["code_challenge"]
+        redirect_uri_provided_explicitly = state_data["redirect_uri_provided_explicitly"] == "True"
+        client_id = state_data["client_id"]
+
+        """Fetch Google access token"""
+        access_token_url = Config.GOOGLE_OAUTH_TOKEN_URL
+        http_response = await create_mcp_http_client().post(
+            access_token_url,
+            data=urllib.parse.urlencode({
+                "client_id": Config.GOOGLE_OAUTH_CLIENT_ID,
+                "client_secret": Config.GOOGLE_OAUTH_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}",
+                "grant_type": "authorization_code",
+            }),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        logger.debug(
+            f"Google authorization HTTP Response: {http_response.status_code} {http_response.text}"
+        )
+
+        http_response.raise_for_status()
+
+        access_response = http_response.json()
+
+        token = access_response.get('access_token')
+
+        new_code = secrets.token_hex(16)
+
+        auth_code = AuthorizationCode(
+            code=new_code,
+            client_id=client_id,
+            redirect_uri=str(AnyHttpUrl(redirect_uri)),
+            redirect_uri_provided_explicitly=redirect_uri_provided_explicitly,
+            expires_at=time.time() + 300,
+            scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
+            code_challenge=code_challenge,
+        )
+
+        self.auth_codes[new_code] = auth_code
+
+        self.tokens[token] = AccessToken(
+            token=token,
+            client_id=client_id,
+            scopes=Config.GOOGLE_OAUTH_SCOPE.split(),
+            expires_at=None,
+            **access_response
+        )
+
+        del self.state_mapping[state]
+
+        return construct_redirect_uri(redirect_uri, code=new_code, state=state)
+
+    async def load_authorization_code(
+            self, client: OAuthClientInformationFull, authorization_code: str
+    ) -> AuthorizationCode | None:
+        """Load an authorization code."""
+        return self.auth_codes.get(authorization_code)
+
+    async def exchange_authorization_code(
+            self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode
+    ) -> OAuthToken:
+        """Exchange authorization code for tokens."""
+        if authorization_code.code not in self.auth_codes:
+            raise ValueError("Invalid authorization code")
+
+        mcp_token = secrets.token_hex(32)
+
+        self.tokens[mcp_token] = AccessToken(
+            token=mcp_token,
+            client_id=client.client_id,
+            scopes=authorization_code.scopes,
+            expires_at=int(time.time()) + 3600,
+        )
+
+        google_token = next(
+            (
+                token
+                for token, data in self.tokens.items()
+                if (not token.startswith("mcp_")) and data.client_id == client.client_id
+            ),
+            None,
+        )
+
+        if google_token:
+            self.token_mapping[mcp_token] = google_token
+
+        del self.auth_codes[authorization_code.code]
+
+        return OAuthToken(
+            access_token=mcp_token,
+            token_type="bearer",
+            expires_in=3600,
+            scope=" ".join(authorization_code.scopes),
+        )
+
+    async def load_access_token(self, token: str) -> AccessToken | None:
+        """Load and validate an access token."""
+        access_token = self.tokens.get(token)
+        if not access_token:
+            return None
+
+        # Check if expired
+        if access_token.expires_at and access_token.expires_at < time.time():
+            del self.tokens[token]
+            return None
+
+        return access_token
+
+    async def load_refresh_token(self, client: OAuthClientInformationFull, refresh_token: str) -> RefreshToken | None:
+        """Load a refresh token - not supported."""
+        return None
+
+    async def exchange_refresh_token(
+            self,
+            client: OAuthClientInformationFull,
+            refresh_token: RefreshToken,
+            scopes: list[str],
+    ) -> OAuthToken:
+        """Exchange refresh token"""
+        raise NotImplementedError("Not supported")
+
+    async def revoke_token(self, token: str, token_type_hint: str | None = None) -> None:
+        """Revoke a token."""
+        if token in self.tokens:
+            del self.tokens[token]

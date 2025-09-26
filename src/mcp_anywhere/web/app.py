@@ -10,7 +10,7 @@ from starlette.routing import Mount
 from starlette.staticfiles import StaticFiles
 
 from mcp_anywhere.auth.initialization import initialize_oauth_data
-from mcp_anywhere.auth.provider import MCPAnywhereAuthProvider
+from mcp_anywhere.auth.provider import MCPAnywhereAuthProvider, GoogleOAuthProvider
 from mcp_anywhere.auth.routes import create_oauth_http_routes
 from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
@@ -62,6 +62,8 @@ You can use tools/list to see all available tools from all mounted servers.
     )
     router.add_middleware(ToolFilterMiddleware())
 
+    router.add_middleware(SessionMiddleware)
+
     # Create MCP manager
     mcp_manager = MCPManager(router)
 
@@ -77,10 +79,11 @@ You can use tools/list to see all available tools from all mounted servers.
     # The key insight from the old code: FastMCP creates its app with lifespan included
     mcp_http_app = mcp_manager.router.http_app(path="/", transport="http")
 
-    # Create OAuth provider
-    oauth_provider = (
-        MCPAnywhereAuthProvider(get_async_session) if transport_mode == "http" else None
-    )
+    oauth_provider = None
+
+    if transport_mode == "http":
+        oauth_provider = GoogleOAuthProvider(get_async_session()) \
+            if Config.GOOGLE_OAUTH_CLIENT_SECRET is not None else MCPAnywhereAuthProvider(get_async_session())
 
     # Configure middleware - Using SameSite cookies for CSRF protection (modern approach)
     middleware = [
