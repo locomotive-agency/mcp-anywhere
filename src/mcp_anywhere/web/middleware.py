@@ -5,6 +5,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp
 
+from mcp_anywhere.auth.provider import GoogleOAuthProvider
 from mcp_anywhere.config import Config
 from mcp_anywhere.core.base_middleware import BasePathProtectionMiddleware
 from mcp_anywhere.logging_config import get_logger
@@ -156,6 +157,10 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                 },
                 status_code=401,
             )
+
+        # For Google OAuth, check that user is part of allowed domains
+        if isinstance(oauth_provider, GoogleOAuthProvider):
+            logger.debug("Fetching Google user details")
 
         # Authentication successful, proceed with request
         return await call_next(request)

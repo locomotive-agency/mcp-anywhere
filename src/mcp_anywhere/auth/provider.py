@@ -565,3 +565,19 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """Revoke a token."""
         if token in self.tokens:
             del self.tokens[token]
+
+    async def introspect_token(self, token: str) -> AccessToken | None:
+        """Introspect an access token for resource server validation.
+        Required for the introspection endpoint.
+        """
+        access_token = self.tokens.get(token)
+
+        if not access_token:
+            return None
+
+        # Check expiration
+        if time.time() > access_token.expires_at:
+            del self.tokens[token]
+            return None
+
+        return access_token
