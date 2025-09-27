@@ -581,3 +581,20 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             return None
 
         return access_token
+
+    async def get_user_profile(self, token: str) -> dict[str, Any]:
+
+        access_token = self.token_mapping.get(token)
+
+        http_response = await create_mcp_http_client().get(
+            Config.GOOGLE_OAUTH_USERINFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+
+        if http_response.status_code != 200:
+            raise HTTPException(
+                status_code=http_response.status_code,
+                detail="Failed to fetch Google OAuth user profile"
+            )
+
+        return http_response.json()

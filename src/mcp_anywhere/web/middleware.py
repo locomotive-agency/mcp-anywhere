@@ -161,6 +161,18 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
         # For Google OAuth, check that user is part of allowed domains
         if isinstance(oauth_provider, GoogleOAuthProvider):
             logger.debug("Fetching Google user details")
+            google_user = await oauth_provider.get_user_profile(access_token.token)
+            domain = google_user["email"].split("@")[1]
+            logger.debug(f"Google User Domain: {domain}")
+
+            if Config.OAUTH_USER_ALLOWED_DOMAINS is not None and domain not in Config.OAUTH_USER_ALLOWED_DOMAINS:
+                return JSONResponse(
+                    {
+                        "error": "User Unauthorized",
+                        "error_description": "User not member of authorized domain",
+                    },
+                    status_code=403,
+                )
 
         # Authentication successful, proceed with request
         return await call_next(request)
