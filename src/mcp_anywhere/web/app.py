@@ -85,8 +85,8 @@ You can use tools/list to see all available tools from all mounted servers.
     oauth_provider = None
 
     if transport_mode == "http":
-        oauth_provider = GoogleOAuthProvider(get_async_session()) \
-            if Config.GOOGLE_OAUTH_CLIENT_SECRET is not None else MCPAnywhereAuthProvider(get_async_session())
+        oauth_provider = GoogleOAuthProvider(get_async_session) \
+            if Config.GOOGLE_OAUTH_CLIENT_SECRET is not None else MCPAnywhereAuthProvider(get_async_session)
 
     # Configure middleware - Using SameSite cookies for CSRF protection (modern approach)
     middleware = [
