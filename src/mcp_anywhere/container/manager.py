@@ -597,10 +597,6 @@ class ContainerManager:
 
             async with get_async_session() as db_session:
                 for server in built_servers:
-                    # Always clean up a potentially lingering container from a previous failed run
-                    self._cleanup_existing_container(
-                        self._get_container_name(server.id)
-                    )
                     try:
                         # Add server to MCP manager and discover tools
                         discovered_tools = await mcp_manager.add_server(server)
