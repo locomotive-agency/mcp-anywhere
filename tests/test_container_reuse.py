@@ -1,7 +1,9 @@
 """Test container reuse on application restart."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.database import MCPServer
 
@@ -12,8 +14,9 @@ class TestContainerReuse:
     @pytest.mark.asyncio
     async def test_reused_containers_not_cleaned_up(self):
         """Test that reused containers are not cleaned up during mount_built_servers."""
-        from mcp_anywhere.core.mcp_manager import MCPManager
         from fastmcp import FastMCP
+
+        from mcp_anywhere.core.mcp_manager import MCPManager
         
         # Create mock router
         mock_router = MagicMock(spec=FastMCP)
@@ -94,9 +97,9 @@ class TestContainerReuse:
         server.secret_files = []
         
         # Mock container manager
-        with patch('mcp_anywhere.core.mcp_manager.ContainerManager') as MockContainerManager:
+        with patch('mcp_anywhere.core.mcp_manager.ContainerManager') as mock_container_manager_class:
             mock_manager = MagicMock()
-            MockContainerManager.return_value = mock_manager
+            mock_container_manager_class.return_value = mock_manager
             
             # Simulate healthy container
             mock_manager._is_container_healthy.return_value = True
@@ -130,9 +133,9 @@ class TestContainerReuse:
         server.secret_files = []
         
         # Mock container manager
-        with patch('mcp_anywhere.core.mcp_manager.ContainerManager') as MockContainerManager:
+        with patch('mcp_anywhere.core.mcp_manager.ContainerManager') as mock_container_manager_class:
             mock_manager = MagicMock()
-            MockContainerManager.return_value = mock_manager
+            mock_container_manager_class.return_value = mock_manager
             
             # Simulate unhealthy container (not running or wrong image)
             mock_manager._is_container_healthy.return_value = False
