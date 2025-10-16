@@ -145,17 +145,15 @@
                 </div>
                 
                 <div>
-                    <label for="install_command" class="block text-sm font-medium mb-2">
-                        Install Command 
-                        <span class="text-gray-500 font-normal">(optional)</span>
-                    </label>
-                    <input type="text" 
+                    <label for="install_command" class="block text-sm font-medium mb-2">Install Command</label>
+                    <input type="text"
                            id="install_command"
-                           name="install_command" 
+                           name="install_command"
                            value="{{ analysis.install_command or '' }}"
                            class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="npm install or pip install -e .">
-                    <p class="text-xs text-gray-500 mt-1">Command to install the server package (required for npx/uvx)</p>
+                           placeholder="npm install or pip install -e ."
+                           required>
+                    <p class="text-xs text-gray-500 mt-1">Command to install the server package dependencies</p>
                     {% if errors and errors.install_command %}
                         <p class="text-red-600 text-sm mt-1">{{ errors.install_command[0] }}</p>
                     {% endif %}

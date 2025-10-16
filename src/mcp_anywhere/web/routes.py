@@ -246,7 +246,7 @@ async def edit_server_post(request: Request) -> HTMLResponse:
             server.github_url = server_data.github_url
             server.description = server_data.description
             server.runtime_type = server_data.runtime_type
-            server.install_command = server_data.install_command or ""
+            server.install_command = server_data.install_command
             server.start_command = server_data.start_command
             server.env_variables = server_data.env_variables
 
@@ -660,7 +660,7 @@ async def handle_save_server(request: Request, form_data) -> HTMLResponse:
                 github_url=server_data.github_url,
                 description=server_data.description,
                 runtime_type=server_data.runtime_type,
-                install_command=server_data.install_command or "",
+                install_command=server_data.install_command,
                 start_command=server_data.start_command,
                 env_variables=server_data.env_variables,
             )
