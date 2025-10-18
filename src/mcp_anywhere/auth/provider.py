@@ -390,6 +390,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.tokens: dict[str, AccessToken] = {}
         self.state_mapping: dict[str, dict[str, str]] = {}
         self.token_mapping: dict[str, str] = {}
+        self.state_resource_tokens: dict[str] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         """Get OAuth client information."""
@@ -429,6 +430,32 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return auth_url
 
+    async def build_auth_url(self) -> str:
+
+        state = f"{secrets.token_hex(16)}_btn"
+
+        redirect_uri = f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
+
+        self.state_mapping[state] = {
+            "redirect_uri": redirect_uri,
+            "code_challenge": "code",
+            "redirect_uri_provided_explicitly": "True",
+            "client_id": f"{Config.GOOGLE_OAUTH_CLIENT_ID}",
+        }
+
+        auth_url = (
+            f"{Config.GOOGLE_OAUTH_AUTH_URL}"
+            f"?client_id={Config.GOOGLE_OAUTH_CLIENT_ID}"
+            f"&redirect_uri={redirect_uri}"
+            f"&response_type=code"
+            f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
+            f"&state={state}"
+        )
+
+        logger.debug(f"Building auth url: {auth_url}")
+
+        return auth_url
+
     async def handle_callback(self, code: str, state: str) -> str:
         """Handle Google OAuth callback."""
 
@@ -465,6 +492,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         access_response = http_response.json()
 
         token = access_response.get('access_token')
+
+        self.state_resource_tokens[state] = token
 
         new_code = secrets.token_hex(16)
 
@@ -582,9 +611,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return access_token
 
-    async def get_user_profile(self, token: str) -> dict[str, Any]:
-
-        access_token = self.token_mapping.get(token)
+    async def get_user_profile(self, access_token: str) -> dict[str, Any]:
 
         http_response = await create_mcp_http_client().get(
             Config.GOOGLE_OAUTH_USERINFO_URL,
@@ -598,3 +625,17 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             )
 
         return http_response.json()
+
+    async def user_has_domain_authorization(self, email: str) -> bool:
+
+        domain = email.split("@")[1]
+        logger.debug(f"Checking user domain {domain} against authorized domain")
+
+        if domain == Config.OAUTH_USER_ALLOWED_DOMAINS:
+            return True
+
+        return False
+
+    async def resource_token_from_state(self, state: str) -> str:
+        logger.debug(f"Fetching resource token from state {state}")
+        return self.state_resource_tokens[state]
