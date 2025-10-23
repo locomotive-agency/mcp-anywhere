@@ -3,7 +3,7 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'mcp-anywhere'
+app = 'my-mcpa-deploy'
 primary_region = 'iad'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'
@@ -17,9 +17,9 @@ kill_timeout = '5s'
   WEB_PORT = '8000'
   MCP_PATH = '/mcp'
   LOG_LEVEL = 'DEBUG'
-  SERVER_URL = 'https://mcp-anywhere.fly.dev'
-  OAUTH_USER_ALLOWED_DOMAIN = 'locomotive.agency'
+  SERVER_URL = 'https://my-mcpa-deploy.fly.dev'
   GOOGLE_OAUTH_REDIRECT_URI = '/auth/callback'
+  START_SERVERS_ON_LAUNCH = 'false'
 
 [[mounts]]
   source = 'mcp_anywhere_data'
