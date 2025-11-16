@@ -62,8 +62,6 @@ You can use tools/list to see all available tools from all mounted servers.
     )
     router.add_middleware(ToolFilterMiddleware())
 
-    router.add_middleware(SessionMiddleware)
-
     # Create MCP manager
     mcp_manager = MCPManager(router)
 
