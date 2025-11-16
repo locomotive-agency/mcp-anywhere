@@ -1,3 +1,5 @@
+import textwrap
+
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -951,10 +953,21 @@ async def health(_request: Request) -> Response:
     return Response(content="ok", media_type="text/plain", status_code=200)
 
 
+async def robots(_request: Request):
+    """Create robots.txt file."""
+    content = textwrap.dedent("""\
+        User-agent: *
+        Disallow: /
+        """
+    )
+    return Response(content=content, media_type="text/plain", status_code=200)
+
+
 routes = [
     Route("/", endpoint=homepage),
     Route("/health", endpoint=health, methods=["GET"]),
     Route("/favicon.ico", endpoint=favicon, methods=["GET"]),
+    Route("/robots.txt", endpoint=robots, methods=["GET"]),
     Route("/servers/add", endpoint=add_server, methods=["GET", "POST"]),
     Route("/servers/{server_id}", endpoint=server_detail, methods=["GET"]),
     Route("/servers/{server_id}/edit", endpoint=edit_server, methods=["GET", "POST"]),

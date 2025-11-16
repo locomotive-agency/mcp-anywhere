@@ -179,3 +179,5 @@ engineering_plan.md
 claude.md
 mcp_simple_auth/
 vendor/
+fly.toml
+fly.staging.toml

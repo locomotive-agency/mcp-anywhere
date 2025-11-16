@@ -66,6 +66,8 @@ fly launch
 fly secrets set SECRET_KEY=<secure-random-key>
 fly secrets set JWT_SECRET_KEY=<jwt-secret-key>
 fly secrets set ANTHROPIC_API_KEY=<your-api-key>
+fly secrets set GOOGLE_OAUTH_CLIENT_ID=<google-oauth-client-id>
+fly secrets set GOOGLE_OAUTH_CLIENT_SECRET=<google-oauth-client-secret>
 fly deploy
 
 # Application available at https://your-app.fly.dev
@@ -175,6 +177,19 @@ Lastly, set up the MCP Anywhere application before starting Claude Desktop:
 uv run mcp-anywhere serve stdio
 ```
 
+**Authentication Options:**
+
+For Google OAuth (recommended for teams):
+1. Set up Google OAuth credentials in Google Cloud Console
+2. Configure environment variables:
+   ```bash
+   GOOGLE_OAUTH_CLIENT_ID=your-client-id
+   GOOGLE_OAUTH_CLIENT_SECRET=your-client-secret
+   GOOGLE_OAUTH_REDIRECT_URI=/auth/callback
+   OAUTH_USER_ALLOWED_DOMAIN=company.com  # Optional: restrict to your domain
+   ```
+3. Users can sign in with Google at `/auth/login`
+
 **HTTP API Integration:**
 ```python
 from fastmcp import Client
@@ -202,14 +217,23 @@ mcp-anywhere serve http --host 0.0.0.0 --port 8000
 
 ## Features
 
+### Authentication & Access Control
+- Google OAuth integration - Sign in with Google for simplified authentication
+- Domain-based access control - Restrict access to users from specific domains (e.g., @company.com)
+- Session-based web authentication with secure cookie management
+- JWT tokens for API access with proper scope validation
+
 ### Tool Discovery and Management
 - Automatic repository analysis using Claude AI
 - Container health monitoring with intelligent remounting
 - Support for npx, uvx, and Docker runtimes
-- Selective tool enablement
-- Pre-configured Python interpreter
+- Selective tool enablement with per-server controls
+- Enhanced server management - Start, stop, and restart servers through web interface
+- Pre-configured Python interpreter with sandbox isolation
 
 ### Security and Authentication
+- Google OAuth integration for simplified user authentication
+- Domain-based access control for organizational security
 - OAuth 2.0/2.1 with PKCE support (MCP SDK implementation)
 - JWT-based API authentication
 - Docker container isolation for tool execution
@@ -219,7 +243,9 @@ mcp-anywhere serve http --host 0.0.0.0 --port 8000
 ### Production Architecture
 - Asynchronous architecture (Starlette/FastAPI)
 - Health monitoring with automatic recovery
-- Streamlined deployment process
+- Flexible container management with configurable startup/shutdown behavior
+- Enhanced server lifecycle management with start/stop/restart controls
+- Streamlined deployment process with GitHub Actions CI
 - CLI support for direct tool access
 
 ## Architecture
@@ -257,6 +283,16 @@ DATA_DIR                   # Data storage directory (default: .data)
 DOCKER_TIMEOUT             # Container operation timeout in seconds (default: 300)
 LOG_LEVEL                  # Logging level (default: INFO)
 GITHUB_TOKEN               # GitHub token for private repository access
+
+# Container Management
+CLEANUP_CONTAINERS_ON_SHUTDOWN    # Clean up containers on app shutdown (default: false)
+REBUILD_CONTAINERS_ON_STARTUP     # Rebuild containers on startup (default: true)
+
+# Google OAuth (optional - enables Google authentication)
+GOOGLE_OAUTH_CLIENT_ID            # Google OAuth client ID
+GOOGLE_OAUTH_CLIENT_SECRET        # Google OAuth client secret  
+GOOGLE_OAUTH_REDIRECT_URI         # OAuth redirect URI (e.g., /auth/callback)
+OAUTH_USER_ALLOWED_DOMAIN         # Restrict access to specific domain (e.g., company.com)
 ```
 
 ## Development
