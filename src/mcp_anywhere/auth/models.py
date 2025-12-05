@@ -25,6 +25,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String(80), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default="user")  # 'admin' or 'user'
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     def set_password(self, password: str) -> None:
@@ -35,11 +36,16 @@ class User(Base):
         """Check if provided password matches the stored hash."""
         return check_password_hash(self.password_hash, password)
 
+    def is_admin(self) -> bool:
+        """Check if user has admin role."""
+        return self.role == "admin"
+
     def to_dict(self) -> dict:
         """Convert user to dictionary representation."""
         return {
             "id": self.id,
             "username": self.username,
+            "role": self.role,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

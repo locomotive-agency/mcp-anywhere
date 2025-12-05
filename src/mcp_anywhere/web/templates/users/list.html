@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - MCP Anywhere{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">User Management</h2>
+        <p class="text-sm text-gray-600 mt-1">Manage user accounts and access tokens</p>
+    </div>
+    <a href="/admin/users/create"
+       class="btn-primary inline-flex items-center px-4 py-2 rounded-lg shadow-md hover:shadow-lg">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Create User
+    </a>
+</div>
+
+{% if users %}
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Active Tokens
+                </th>
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                </th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for user in users %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 {% if user.role == 'admin' %}bg-purple-100{% else %}bg-blue-100{% endif %} rounded-full flex items-center justify-center">
+                            <span class="{% if user.role == 'admin' %}text-purple-600{% else %}text-blue-600{% endif %} font-semibold text-lg">
+                                {{ user.username[0].upper() }}
+                            </span>
+                        </div>
+                        <div class="ml-4">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ user.username }}
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                ID: {{ user.id }}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        {% if user.role == 'admin' %}bg-purple-100 text-purple-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {% if user.role == 'admin' %}
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        {% endif %}
+                        {{ user.role.title() }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                        {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        {{ user.created_at.strftime('%H:%M:%S') if user.created_at else '' }}
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        {% if user.active_tokens > 0 %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ user.active_tokens }} active
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div class="flex justify-end space-x-2">
+                        <a href="/admin/users/{{ user.id }}"
+                           class="text-blue-600 hover:text-blue-900">
+                            View
+                        </a>
+                        <a href="/admin/users/{{ user.id }}/change-password"
+                           class="text-yellow-600 hover:text-yellow-900">
+                            Change Password
+                        </a>
+                        <form method="POST" action="/admin/users/{{ user.id }}/delete"
+                              onsubmit="return confirm('Are you sure you want to delete user {{ user.username }}? This will also delete all their tokens.');"
+                              class="inline">
+                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-12 bg-white rounded-lg shadow-md">
+    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+    <h3 class="mt-4 text-lg font-medium text-gray-900">No users found</h3>
+    <p class="mt-2 text-sm text-gray-500">Get started by creating your first user.</p>
+    <div class="mt-6">
+        <a href="/admin/users/create"
+           class="btn-primary inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md">
+            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Create First User
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+        </div>
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-blue-800">About User Management</h3>
+            <div class="mt-2 text-sm text-blue-700">
+                <p>Users can authenticate and receive OAuth tokens to access the MCP gateway. You can view active tokens, revoke access, and manage user credentials from this dashboard.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

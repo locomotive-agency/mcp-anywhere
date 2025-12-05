@@ -51,6 +51,7 @@ async def handle_login(request: Request) -> RedirectResponse:
             # Set session
             request.session["user_id"] = user.id
             request.session["username"] = user.username
+            request.session["role"] = user.role
 
             # Redirect to original OAuth request or specified next URL
             logger.info(
