@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 templates = Jinja2Templates(directory="src/mcp_anywhere/web/templates")
 
 
-def require_admin_role(func):
+def require_admin(func):
     """Decorator to require admin role for a route."""
 
     async def wrapper(request: Request, *args, **kwargs):
@@ -42,7 +42,7 @@ def require_admin_role(func):
     return wrapper
 
 
-@require_admin_role
+@require_admin
 async def user_list(request: Request) -> HTMLResponse:
     """Display list of all users."""
     try:
@@ -87,14 +87,14 @@ async def user_list(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin_role
+@require_admin
 async def user_detail(request: Request) -> HTMLResponse:
-    """Display user details"""
-
+    """Display user details including tokens and activity."""
     user_id = request.path_params["user_id"]
 
     try:
         async with get_async_session() as db_session:
+            # Get user
             stmt = select(User).where(User.id == user_id)
             result = await db_session.execute(stmt)
             user = result.scalar_one_or_none()
@@ -146,7 +146,7 @@ async def user_detail(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin_role
+@require_admin
 async def user_create_get(request: Request) -> HTMLResponse:
     """Display create user form."""
     return templates.TemplateResponse(
@@ -154,7 +154,7 @@ async def user_create_get(request: Request) -> HTMLResponse:
     )
 
 
-@require_admin_role
+@require_admin
 async def user_create_post(request: Request) -> HTMLResponse:
     """Handle user creation."""
     form_data = await request.form()
@@ -230,7 +230,7 @@ async def user_create_post(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin_role
+@require_admin
 async def user_delete(request: Request) -> RedirectResponse | HTMLResponse:
     """Delete a user."""
     user_id = request.path_params["user_id"]
@@ -250,6 +250,18 @@ async def user_delete(request: Request) -> RedirectResponse | HTMLResponse:
                         request, message=f"User with ID '{user_id}' not found"
                     ),
                     status_code=404,
+                )
+
+            # Prevent deletion of the initial admin user
+            if user.username == "admin":
+                return templates.TemplateResponse(
+                    request,
+                    "400.html",
+                    get_template_context(
+                        request,
+                        message="Cannot delete the default admin account. This account is protected.",
+                    ),
+                    status_code=400,
                 )
 
             username = user.username
@@ -272,7 +284,7 @@ async def user_delete(request: Request) -> RedirectResponse | HTMLResponse:
         )
 
 
-@require_admin_role
+@require_admin
 async def user_revoke_token(request: Request) -> RedirectResponse | HTMLResponse:
     """Revoke a user's token."""
     user_id = request.path_params["user_id"]
@@ -314,7 +326,7 @@ async def user_revoke_token(request: Request) -> RedirectResponse | HTMLResponse
         )
 
 
-@require_admin_role
+@require_admin
 async def user_revoke_all_tokens(request: Request) -> RedirectResponse | HTMLResponse:
     """Revoke all tokens for a user."""
     user_id = request.path_params["user_id"]
@@ -366,7 +378,7 @@ async def user_revoke_all_tokens(request: Request) -> RedirectResponse | HTMLRes
         )
 
 
-@require_admin_role
+@require_admin
 async def user_change_password_get(request: Request) -> HTMLResponse:
     """Display change password form."""
     user_id = request.path_params["user_id"]
@@ -403,7 +415,7 @@ async def user_change_password_get(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin_role
+@require_admin
 async def user_change_password_post(request: Request) -> HTMLResponse:
     """Handle password change."""
     user_id = request.path_params["user_id"]
