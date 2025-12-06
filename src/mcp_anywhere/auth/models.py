@@ -15,6 +15,7 @@ from sqlalchemy import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mcp_anywhere.base import Base
+from mcp_anywhere.config import Config
 
 
 class User(Base):
@@ -25,7 +26,9 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String(80), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False, default="user")  # 'admin' or 'user'
+    role = Column(String(20), nullable=False, default=Config.USER_ROLE)
+    email = Column(String(255), nullable=False, default="empty")
+    type = Column(String(20), nullable=False, default=Config.USER_LOCAL)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     def set_password(self, password: str) -> None:
@@ -38,7 +41,11 @@ class User(Base):
 
     def is_admin(self) -> bool:
         """Check if user has admin role."""
-        return self.role == "admin"
+        return self.role == Config.ADMIN_ROLE
+
+    def is_local_user(self) -> bool:
+        """Check if user is local."""
+        return self.type == Config.USER_LOCAL
 
     def to_dict(self) -> dict:
         """Convert user to dictionary representation."""

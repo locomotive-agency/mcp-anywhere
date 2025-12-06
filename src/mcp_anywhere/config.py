@@ -27,7 +27,11 @@ class Config:
     USER_ROLE = "user"
     ADMIN_ROLE = "admin"
 
+    USER_LOCAL = "local"
+    USER_GOOGLE = "google"
+
     AUTH_ROLES = [USER_ROLE, ADMIN_ROLE]
+    USER_TYPES = [USER_LOCAL, USER_GOOGLE]
 
     # Data directory setting
     DATA_DIR = DATA_DIR

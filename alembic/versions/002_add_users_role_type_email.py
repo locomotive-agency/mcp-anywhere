@@ -1,8 +1,8 @@
-"""Add user roles
+"""Add users role type and email
 
 Revision ID: 002
 Revises: 001
-Create Date: 2025-12-06
+Create Date: 2025-12-01
 
 """
 from typing import Sequence, Union
@@ -22,10 +22,9 @@ def upgrade() -> None:
     """Add role column to users table."""
     # Using batch mode for SQLite compatibility
     with op.batch_alter_table('users', schema=None) as batch_op:
-        # Add role column with default value 'user'
-        batch_op.add_column(
-            sa.Column('role', sa.String(length=20), nullable=False, server_default='user')
-        )
+        batch_op.add_column(sa.Column('role', sa.String(length=20), nullable=False, server_default='user'))
+        batch_op.add_column(sa.Column('email', sa.String(length=255), nullable=False))
+        batch_op.add_column(sa.Column('type', sa.String(length=20), nullable=False))
 
     # Update existing admin user to have admin role
     op.execute(
@@ -36,8 +35,18 @@ def upgrade() -> None:
         """
     )
 
+    # Update existing users to be local users
+    op.execute(
+        """
+        UPDATE users
+        SET type = 'local'
+        """
+    )
+
 
 def downgrade() -> None:
     """Remove role column from users table."""
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_column('role')
+        batch_op.drop_column('type')
+        batch_op.drop_column('email')
