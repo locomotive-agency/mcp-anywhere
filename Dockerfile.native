@@ -1,6 +1,6 @@
 FROM alpine:3.20.0
 
-RUN apk update && apk add --no-cache python3
+RUN apk update && apk add --no-cache python3 sqlite
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -15,5 +15,9 @@ RUN uv sync --locked --no-dev
 EXPOSE 8000
 
 ENV PATH="/app/.venv/bin:$PATH"
+
+COPY entrypoint.native.sh.sh /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["python", "-m", "mcp_anywhere", "serve", "http"]

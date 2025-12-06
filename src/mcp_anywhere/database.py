@@ -167,7 +167,9 @@ class DatabaseManager:
                 self._engine, class_=AsyncSession, expire_on_commit=False
             )
 
-            # Create tables
+            # Create tables using SQLAlchemy metadata
+            # Note: For production, use Alembic migrations instead
+            # Run: alembic upgrade head
             async with self._engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
 

@@ -78,18 +78,27 @@
             </p>
         </div>
         <div>
-            <h3 class="text-sm font-medium text-gray-500">Token Statistics</h3>
-            <div class="mt-1 flex space-x-4">
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {{ active_tokens }} active
-                </span>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                    {{ expired_tokens }} expired
-                </span>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                    {{ revoked_tokens }} revoked
-                </span>
-            </div>
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Change Role</h3>
+            {% if user.username != 'admin' %}
+            <form method="POST" action="/admin/users/{{ user.id }}/change-role"
+                  onsubmit="return confirm('Are you sure you want to change this user\'s role?');"
+                  class="flex items-center space-x-2">
+                <select name="role"
+                        class="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
+                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                </select>
+                <button type="submit"
+                        class="inline-flex items-center px-3 py-1.5 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Update
+                </button>
+            </form>
+            {% else %}
+            <p class="text-sm text-gray-500 italic">Role cannot be changed for default admin account</p>
+            {% endif %}
         </div>
     </div>
 </div>

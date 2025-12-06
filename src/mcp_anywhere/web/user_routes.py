@@ -18,8 +18,8 @@ logger = get_logger(__name__)
 templates = Jinja2Templates(directory="src/mcp_anywhere/web/templates")
 
 
-def require_admin(func):
-    """Decorator to require admin role for a route."""
+def require_admin_role(func):
+    """Require admin role for privileged actions"""
 
     async def wrapper(request: Request, *args, **kwargs):
         current_user = get_current_user(request)
@@ -42,17 +42,17 @@ def require_admin(func):
     return wrapper
 
 
-@require_admin
+@require_admin_role
 async def user_list(request: Request) -> HTMLResponse:
-    """Display list of all users."""
+
     try:
         async with get_async_session() as db_session:
-            # Get all users
+
             stmt = select(User).order_by(User.created_at.desc())
             result = await db_session.execute(stmt)
             users = result.scalars().all()
 
-            # Get token counts for each user
+
             user_data = []
             for user in users:
                 token_stmt = (
@@ -87,14 +87,14 @@ async def user_list(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin
+@require_admin_role
 async def user_detail(request: Request) -> HTMLResponse:
-    """Display user details including tokens and activity."""
+    """Display user details"""
     user_id = request.path_params["user_id"]
 
     try:
         async with get_async_session() as db_session:
-            # Get user
+
             stmt = select(User).where(User.id == user_id)
             result = await db_session.execute(stmt)
             user = result.scalar_one_or_none()
@@ -109,7 +109,6 @@ async def user_detail(request: Request) -> HTMLResponse:
                     status_code=404,
                 )
 
-            # Get user's tokens
             token_stmt = (
                 select(OAuth2Token)
                 .where(OAuth2Token.user_id == user_id)
@@ -146,7 +145,7 @@ async def user_detail(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin
+@require_admin_role
 async def user_create_get(request: Request) -> HTMLResponse:
     """Display create user form."""
     return templates.TemplateResponse(
@@ -154,7 +153,7 @@ async def user_create_get(request: Request) -> HTMLResponse:
     )
 
 
-@require_admin
+@require_admin_role
 async def user_create_post(request: Request) -> HTMLResponse:
     """Handle user creation."""
     form_data = await request.form()
@@ -230,7 +229,7 @@ async def user_create_post(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin
+@require_admin_role
 async def user_delete(request: Request) -> RedirectResponse | HTMLResponse:
     """Delete a user."""
     user_id = request.path_params["user_id"]
@@ -284,7 +283,7 @@ async def user_delete(request: Request) -> RedirectResponse | HTMLResponse:
         )
 
 
-@require_admin
+@require_admin_role
 async def user_revoke_token(request: Request) -> RedirectResponse | HTMLResponse:
     """Revoke a user's token."""
     user_id = request.path_params["user_id"]
@@ -326,7 +325,7 @@ async def user_revoke_token(request: Request) -> RedirectResponse | HTMLResponse
         )
 
 
-@require_admin
+@require_admin_role
 async def user_revoke_all_tokens(request: Request) -> RedirectResponse | HTMLResponse:
     """Revoke all tokens for a user."""
     user_id = request.path_params["user_id"]
@@ -378,7 +377,7 @@ async def user_revoke_all_tokens(request: Request) -> RedirectResponse | HTMLRes
         )
 
 
-@require_admin
+@require_admin_role
 async def user_change_password_get(request: Request) -> HTMLResponse:
     """Display change password form."""
     user_id = request.path_params["user_id"]
@@ -415,7 +414,7 @@ async def user_change_password_get(request: Request) -> HTMLResponse:
         )
 
 
-@require_admin
+@require_admin_role
 async def user_change_password_post(request: Request) -> HTMLResponse:
     """Handle password change."""
     user_id = request.path_params["user_id"]
@@ -477,7 +476,6 @@ async def user_change_password_post(request: Request) -> HTMLResponse:
 
 
 async def user_create(request: Request) -> HTMLResponse:
-    """Handle both GET and POST for /admin/users/create."""
     if request.method == "GET":
         return await user_create_get(request)
     else:
@@ -485,11 +483,73 @@ async def user_create(request: Request) -> HTMLResponse:
 
 
 async def user_change_password(request: Request) -> HTMLResponse:
-    """Handle both GET and POST for /admin/users/{user_id}/change-password."""
     if request.method == "GET":
         return await user_change_password_get(request)
     else:
         return await user_change_password_post(request)
+
+
+@require_admin_role
+async def user_change_role(request: Request) -> RedirectResponse | HTMLResponse:
+    user_id = request.path_params["user_id"]
+    form_data = await request.form()
+    new_role = form_data.get("role", "")
+
+    # Validation
+    if new_role not in ["admin", "user"]:
+        return templates.TemplateResponse(
+            request,
+            "400.html",
+            get_template_context(request, message="Invalid role selected."),
+            status_code=400,
+        )
+
+    try:
+        async with get_async_session() as db_session:
+            stmt = select(User).where(User.id == user_id)
+            result = await db_session.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                return templates.TemplateResponse(
+                    request,
+                    "404.html",
+                    get_template_context(
+                        request, message=f"User with ID '{user_id}' not found"
+                    ),
+                    status_code=404,
+                )
+
+            # Prevent changing role of the initial admin user
+            if user.username == "admin":
+                return templates.TemplateResponse(
+                    request,
+                    "400.html",
+                    get_template_context(
+                        request,
+                        message="Cannot change role of the default admin account. This account is protected.",
+                    ),
+                    status_code=400,
+                )
+
+            old_role = user.role
+            user.role = new_role
+            await db_session.commit()
+
+            logger.info(
+                f"Role changed for user '{user.username}' from {old_role} to {new_role}"
+            )
+
+        return RedirectResponse(url=f"/admin/users/{user_id}", status_code=302)
+
+    except (RuntimeError, ValueError, ConnectionError) as e:
+        logger.exception(f"Error changing role for user {user_id}: {e}")
+        return templates.TemplateResponse(
+            request,
+            "500.html",
+            get_template_context(request, message="Error changing user role"),
+            status_code=500,
+        )
 
 
 routes = [
@@ -501,6 +561,11 @@ routes = [
         "/admin/users/{user_id}/change-password",
         endpoint=user_change_password,
         methods=["GET", "POST"],
+    ),
+    Route(
+        "/admin/users/{user_id}/change-role",
+        endpoint=user_change_role,
+        methods=["POST"],
     ),
     Route(
         "/admin/users/{user_id}/tokens/{token_id}/revoke",

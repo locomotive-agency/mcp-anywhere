@@ -52,6 +52,7 @@
                     </a>
                     {% if current_user is defined and current_user.is_authenticated %}
                     <div class="flex items-center space-x-3">
+                        <span class="text-sm text-gray-500">{{ current_user.username }}</span>
                         <form method="POST" action="/auth/logout" class="inline">
                             <button type="submit"
                                     class="inline-flex items-center text-gray-600 hover:text-gray-900 font-medium transition-colors">
@@ -76,6 +77,11 @@
             <!-- Mobile Menu Dropdown -->
             <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-200 py-3">
                 <div class="space-y-3">
+                    {% if current_user is defined and current_user.is_authenticated %}
+                    <div class="px-3 pb-2 mb-2 border-b border-gray-200">
+                        <span class="text-sm text-gray-500">{{ current_user.username }}</span>
+                    </div>
+                    {% endif %}
                     <a href="/" class="block text-gray-600 hover:text-gray-900 font-medium transition-colors">
                         Dashboard
                     </a>
