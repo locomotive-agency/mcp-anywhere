@@ -10,6 +10,7 @@ from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 
 from mcp_anywhere.auth.models import OAuth2Token, User
+from mcp_anywhere.config import Config
 from mcp_anywhere.database import get_async_session
 from mcp_anywhere.logging_config import get_logger
 from mcp_anywhere.web.routes import get_current_user, get_template_context
@@ -160,7 +161,7 @@ async def user_create_post(request: Request) -> HTMLResponse:
     username = form_data.get("username", "").strip()
     password = form_data.get("password", "")
     confirm_password = form_data.get("confirm_password", "")
-    role = form_data.get("role", "user")
+    role = form_data.get("role", Config.USER_ROLE)
 
     # Validation
     errors = {}
@@ -177,7 +178,7 @@ async def user_create_post(request: Request) -> HTMLResponse:
     if password != confirm_password:
         errors["confirm_password"] = ["Passwords do not match"]
 
-    if role not in ["admin", "user"]:
+    if role not in Config.AUTH_ROLES:
         errors["role"] = ["Invalid role selected"]
 
     if errors:
@@ -496,7 +497,7 @@ async def user_change_role(request: Request) -> RedirectResponse | HTMLResponse:
     new_role = form_data.get("role", "")
 
     # Validation
-    if new_role not in ["admin", "user"]:
+    if new_role not in Config.AUTH_ROLES:
         return templates.TemplateResponse(
             request,
             "400.html",

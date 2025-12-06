@@ -24,6 +24,11 @@ DATA_DIR.mkdir(exist_ok=True)
 class Config:
     """Configuration class."""
 
+    USER_ROLE = "user"
+    ADMIN_ROLE = "admin"
+
+    AUTH_ROLES = [USER_ROLE, ADMIN_ROLE]
+
     # Data directory setting
     DATA_DIR = DATA_DIR
 

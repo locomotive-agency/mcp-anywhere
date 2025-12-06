@@ -11,6 +11,7 @@ from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 
 from mcp_anywhere.claude_analyzer import AsyncClaudeAnalyzer
+from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.database import MCPServer, MCPServerTool, get_async_session
 from mcp_anywhere.database_utils import store_server_tools
@@ -31,7 +32,7 @@ class CurrentUser:
         self.username = username
         self.role = role
         self.is_authenticated = bool(user_id)
-        self.is_admin = role == "admin"
+        self.is_admin = role == Config.ADMIN_ROLE
 
 
 def get_current_user(request: Request) -> CurrentUser:
