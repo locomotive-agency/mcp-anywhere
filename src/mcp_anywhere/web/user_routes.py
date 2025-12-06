@@ -162,6 +162,7 @@ async def user_create_post(request: Request) -> HTMLResponse:
     password = form_data.get("password", "")
     confirm_password = form_data.get("confirm_password", "")
     role = form_data.get("role", Config.USER_ROLE)
+    email = form_data.get("email", "")
 
     # Validation
     errors = {}
@@ -193,7 +194,7 @@ async def user_create_post(request: Request) -> HTMLResponse:
     try:
         async with get_async_session() as db_session:
             # Create new user
-            user = User(username=username, role=role)
+            user = User(username=username, role=role, email=email)
             user.set_password(password)
 
             db_session.add(user)

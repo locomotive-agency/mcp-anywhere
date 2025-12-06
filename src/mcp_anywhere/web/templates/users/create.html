@@ -50,6 +50,23 @@
             </div>
 
             <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                </label>
+                <input type="text"
+                       name="email"
+                       id="email"
+                       value="{{ email if email else '' }}"
+                       required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500
+                              {% if errors and errors.email %}border-red-500{% endif %}">
+                {% if errors and errors.email %}
+                <p class="mt-2 text-sm text-red-600">{{ errors.email[0] }}</p>
+                {% endif %}
+                <p class="mt-1 text-sm text-gray-500">Must be a valid email</p>
+            </div>
+
+            <div>
                 <label for="role" class="block text-sm font-medium text-gray-700 mb-2">
                     Role
                 </label>

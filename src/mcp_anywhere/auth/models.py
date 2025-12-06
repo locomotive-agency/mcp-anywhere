@@ -53,6 +53,8 @@ class User(Base):
             "id": self.id,
             "username": self.username,
             "role": self.role,
+            "email": self.email,
+            "type": self.type,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
