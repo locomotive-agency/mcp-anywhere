@@ -11,7 +11,8 @@ else
       alembic stamp 001 # skip initial migration
       alembic upgrade head
     else
-      echo ">>> User database not found. Continuing"
+      echo ">>> User database not found. Looks like a fresh install."
+      alembic upgrade head
   fi
 fi
 
