@@ -16,7 +16,7 @@ EXPOSE 8000
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY entrypoint.native.sh.sh /usr/local/bin/entrypoint.sh
+COPY entrypoint.native.sh /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
