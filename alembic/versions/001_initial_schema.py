@@ -36,8 +36,8 @@ def upgrade() -> None:
     sa.Column('build_error', sa.Text(), nullable=True),
     sa.Column('image_tag', sa.String(length=200), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
-    )
+    sa.UniqueConstraint('name'),
+    if_not_exists=True)
 
     # MCP Server Tools table
     op.create_table('mcp_server_tools',
@@ -49,8 +49,8 @@ def upgrade() -> None:
     sa.Column('is_enabled', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['server_id'], ['mcp_servers.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
+    sa.PrimaryKeyConstraint('id'),
+    if_not_exists=True)
 
     # MCP Server Secret Files table
     op.create_table('mcp_server_secret_files',
@@ -65,8 +65,8 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['server_id'], ['mcp_servers.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
+    sa.PrimaryKeyConstraint('id'),
+    if_not_exists = True)
 
     # Users table (without role field initially)
     op.create_table('users',
@@ -75,8 +75,8 @@ def upgrade() -> None:
     sa.Column('password_hash', sa.String(length=255), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('username')
-    )
+    sa.UniqueConstraint('username'),
+    if_not_exists=True)
 
     # OAuth Clients table
     op.create_table('oauth_clients',
@@ -86,8 +86,8 @@ def upgrade() -> None:
     sa.Column('redirect_uris', sa.Text(), nullable=False),
     sa.Column('default_scopes', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.PrimaryKeyConstraint('client_id')
-    )
+    sa.PrimaryKeyConstraint('client_id'),
+    if_not_exists=True)
 
     # OAuth Tokens table
     op.create_table('oauth_tokens',
@@ -104,8 +104,8 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['client_id'], ['oauth_clients.client_id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('access_token')
-    )
+    sa.UniqueConstraint('access_token'),
+    if_not_exists=True)
 
 
 def downgrade() -> None:
