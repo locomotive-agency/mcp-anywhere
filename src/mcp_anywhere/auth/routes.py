@@ -49,10 +49,12 @@ async def handle_login(request: Request) -> RedirectResponse:
         user = await session.scalar(stmt)
 
         if user and user.check_password(password):
-            # Set session
-            request.session["user_id"] = user.id
-            request.session["username"] = user.username
-            request.session["role"] = user.role
+
+            request.session.update({
+                "user_id": user.id,
+                "username": user.username,
+                "role": user.role,
+            })
 
             # Redirect to original OAuth request or specified next URL
             logger.info(
@@ -215,9 +217,10 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
                 error_url += f"&next={next_url}"
             return RedirectResponse(url=error_url, status_code=302)
 
-
-        request.session["user_id"] = user_profile["id"]
-        request.session["username"] = user_profile["email"]
+        request.session.update( {
+                "user_id": user_profile["id"],
+                "username": user_profile["email"],
+        })
 
         logger.debug(f"Google User {user_profile["email"]} successfully authenticated")
 
