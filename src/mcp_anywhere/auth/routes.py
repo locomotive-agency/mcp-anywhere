@@ -1,6 +1,9 @@
 """OAuth routes using MCP SDK's auth module.
 Provides all required endpoints including .well-known discovery.
 """
+import secrets
+from typing import Any
+
 from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from sqlalchemy import select
@@ -45,7 +48,7 @@ async def handle_login(request: Request) -> RedirectResponse:
 
     # Get database session
     async with request.app.state.get_async_session() as session:
-        stmt = select(User).where(User.username == username)
+        stmt = select(User).where(User.username == username).where(User.type == Config.USER_LOCAL)
         user = await session.scalar(stmt)
 
         if user and user.check_password(password):
@@ -217,12 +220,15 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
                 error_url += f"&next={next_url}"
             return RedirectResponse(url=error_url, status_code=302)
 
-        request.session.update( {
-                "user_id": user_profile["id"],
-                "username": user_profile["email"],
+        google_user = await persist_google_user(request, user_profile)
+
+        request.session.update({
+            "user_id": google_user.id,
+            "username": google_user.username,
+            "role": google_user.role,
         })
 
-        logger.debug(f"Google User {user_profile["email"]} successfully authenticated")
+        logger.debug(f"Google User {user_profile["email"]} authenticated, redirecting to {next_url}")
 
         return RedirectResponse(status_code=302, url=next_url)
     except HTTPException:
@@ -230,6 +236,29 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return RedirectResponse(status_code=500, url=request.url)
+
+async def persist_google_user(request: Request, user_profile: dict[str, Any]) -> User:
+
+    email = user_profile["email"]
+    name = user_profile["given_name"]
+
+    async with request.app.state.get_async_session() as db_session:
+        stmt = select(User).where(User.email == email)
+        google_user = await db_session.scalar(stmt)
+
+        if not google_user:
+            password = secrets.token_urlsafe(16)
+            user = User(username=name, role=Config.USER_ROLE, email=email, type=Config.USER_GOOGLE)
+            user.set_password(password)
+
+            db_session.add(user)
+            await db_session.commit()
+
+            new_user = await db_session.scalar(stmt)
+
+            return new_user
+
+        return google_user
 
 async def handle_oauth_callback(request: Request) -> RedirectResponse:
 

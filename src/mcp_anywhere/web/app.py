@@ -93,7 +93,6 @@ You can use tools/list to see all available tools from all mounted servers.
         Middleware(
             SessionMiddleware,
             secret_key=Config.SECRET_KEY,
-            same_site="strict",  # CSRF protection via SameSite strict
             max_age=Config.SESSION_MAX_AGE,
         ),
         Middleware(SessionAuthMiddleware),

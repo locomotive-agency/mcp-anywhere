@@ -59,6 +59,7 @@ class SessionAuthMiddleware(BasePathProtectionMiddleware):
             True if user is authenticated, False otherwise
         """
         user_id = request.session.get("user_id")
+
         return bool(user_id)
 
     async def dispatch(self, request: Request, call_next) -> Response:
