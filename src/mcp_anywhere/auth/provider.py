@@ -452,6 +452,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             "code_challenge": "code",
             "redirect_uri_provided_explicitly": "True",
             "client_id": f"{Config.GOOGLE_OAUTH_CLIENT_ID}",
+            "scope": f"{Config.GOOGLE_OAUTH_SCOPE}"
         }
 
         auth_url = (
