@@ -125,7 +125,7 @@ class Config:
     )
     GOOGLE_OAUTH_SCOPE = os.environ.get(
         "GOOGLE_OAUTH_SCOPE",
-        "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid"
+        "https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile+openid"
     )
 
     GOOGLE_OAUTH_USERINFO_URL = os.environ.get(
