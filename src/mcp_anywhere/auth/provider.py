@@ -441,6 +441,32 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return auth_url
 
+    async def build_auth_url(self) -> str:
+
+        state = f"{secrets.token_hex(16)}_btn"
+
+        redirect_uri = f"{Config.SERVER_URL}{Config.GOOGLE_OAUTH_REDIRECT_URI}"
+
+        self.state_mapping[state] = {
+            "redirect_uri": redirect_uri,
+            "code_challenge": "code",
+            "redirect_uri_provided_explicitly": "True",
+            "client_id": f"{Config.GOOGLE_OAUTH_CLIENT_ID}",
+        }
+
+        auth_url = (
+            f"{Config.GOOGLE_OAUTH_AUTH_URL}"
+            f"?client_id={Config.GOOGLE_OAUTH_CLIENT_ID}"
+            f"&redirect_uri={redirect_uri}"
+            f"&response_type=code"
+            f"&scope={Config.GOOGLE_OAUTH_SCOPE}"
+            f"&state={state}"
+        )
+
+        logger.debug(f"Building auth url: {auth_url}")
+
+        return auth_url
+
 
     async def handle_callback(self, code: str, state: str) -> str:
         """Handle Google OAuth callback."""
