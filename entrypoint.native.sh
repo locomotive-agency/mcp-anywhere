@@ -6,9 +6,9 @@ DB_BACKUP_FILE=".data/mcp_anywhere.db.$(date +%s)"
 
 # Backup Database
 if [ -e ${DB} ]; then
-    echo ">>> Running db backup to ${DB_BACKUP_FILE}"
+    echo ">>> Running database backup to ${DB_BACKUP_FILE}"
     sqlite3 ${DB} ".backup ${DB_BACKUP_FILE}"
-    echo ">>> backup complete."
+    echo ">>> Database backup complete."
 fi
 
 # Manage Migrations
