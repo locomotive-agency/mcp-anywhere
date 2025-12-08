@@ -46,7 +46,7 @@ async def create_default_admin_user(
         logger.warning("Please change this password after first login!")
 
     # Create admin user
-    admin_user = User(username=username, role="admin")
+    admin_user = User(username=username, role=Config.ADMIN_ROLE, type=Config.USER_LOCAL)
     admin_user.set_password(password)
 
     db_session.add(admin_user)

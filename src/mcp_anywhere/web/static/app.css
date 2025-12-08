@@ -107,7 +107,6 @@
   height: 2.5rem; /* 40px */
   width: auto;
   max-width: 240px;
-  overflow: hidden; /* Prevent scaled logo from overflowing */
   position: relative;
   z-index: 1;
 }
