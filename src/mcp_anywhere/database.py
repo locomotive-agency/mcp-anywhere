@@ -91,6 +91,7 @@ class MCPServerTool(Base):
     tool_name: Mapped[str] = mapped_column(String(100), nullable=False)
     tool_description: Mapped[str | None] = mapped_column(Text)
     tool_schema: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    tool_capability: Mapped[str] = mapped_column(String(20), nullable=False, default="read")
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=datetime.utcnow

@@ -4,7 +4,7 @@ set -e
 DB=".data/mcp_anywhere.db"
 DB_BACKUP_FILE=".data/mcp_anywhere.db.$(date +%s)"
 
-# Backup Database
+# Backup Database, if exists.
 if [ -e ${DB} ]; then
     echo ">>> Running database backup to ${DB_BACKUP_FILE}"
     sqlite3 ${DB} ".backup ${DB_BACKUP_FILE}"
