@@ -448,6 +448,47 @@ async def toggle_tool(request: Request) -> HTMLResponse:
         )
 
 
+async def change_tool_capability(request: Request) -> Response:
+    """Change tool capability (read/write) via HTMX."""
+    server_id = request.path_params["server_id"]
+    tool_id = request.path_params["tool_id"]
+
+    try:
+        # Get form data
+        form_data = await request.form()
+        new_capability = form_data.get("capability", "read")
+
+        # Validate capability value
+        if new_capability not in ["read", "write"]:
+            return Response(content="Invalid capability", status_code=400)
+
+        async with get_async_session() as db_session:
+            # Get the tool
+            stmt = select(MCPServerTool).where(
+                MCPServerTool.id == tool_id, MCPServerTool.server_id == server_id
+            )
+            result = await db_session.execute(stmt)
+            tool = result.scalar_one_or_none()
+
+            if not tool:
+                return Response(content="Tool not found", status_code=404)
+
+            # Update the capability
+            tool.tool_capability = new_capability
+            await db_session.commit()
+
+            logger.info(
+                f'Tool "{tool.tool_name}" capability changed to {new_capability}'
+            )
+
+        # Return empty response for HTMX (swap=none)
+        return Response(content="", status_code=200)
+
+    except (RuntimeError, ValueError, ConnectionError, IntegrityError) as e:
+        logger.exception(f"Error changing tool capability {tool_id}: {e}")
+        return Response(content="Error changing capability", status_code=500)
+
+
 async def handle_claude_connection_error(
     request: Request, github_url: str, error: ConnectionError
 ) -> HTMLResponse:
@@ -983,6 +1024,11 @@ routes = [
         "/servers/{server_id}/tools/{tool_id}/toggle",
         endpoint=toggle_tool,
         methods=["POST", "GET"],
+    ),
+    Route(
+        "/servers/{server_id}/tools/{tool_id}/capability",
+        endpoint=change_tool_capability,
+        methods=["POST"],
     ),
     Route("/servers/{server_id}/delete", endpoint=delete_server, methods=["POST"]),
 ]

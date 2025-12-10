@@ -40,16 +40,17 @@ async def store_server_tools(
 
         # Add new tools
         for tool_name in tools_to_add:
-            if tool_name in ["read", "list", "show"]:
-                capability = "read"
-            else:
+
+            capability = "read"
+
+            if tool_name.lower() in ["write", "run", "make"]:
                 capability = "write"
 
             new_tool = MCPServerTool(
                 server_id=server_config.id,
                 tool_name=tool_name,
                 tool_description=discovered_tools_dict[tool_name]["description"],
-                capability=capability,
+                tool_capability=capability,
                 is_enabled=True,
             )
             db_session.add(new_tool)
@@ -78,4 +79,7 @@ async def store_server_tools(
     except (RuntimeError, ValueError, ConnectionError, IntegrityError) as e:
         logger.exception(f"Database error storing tools for {server_config.name}: {e}")
         await db_session.rollback()
+        raise
+    except Exception as e:
+        logger.exception(f"Database error storing tools for {server_config.name}: {e}")
         raise
