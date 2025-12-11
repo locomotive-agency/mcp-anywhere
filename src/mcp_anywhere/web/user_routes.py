@@ -577,9 +577,10 @@ async def user_permissions(request: Request) -> HTMLResponse:
                     status_code=404,
                 )
 
-            # Get all tools with their servers and existing permissions
+            # Get all enabled tools with their servers and existing permissions
             tools_stmt = (
                 select(MCPServerTool)
+                .where(MCPServerTool.is_enabled == True)  # noqa: E712
                 .options(selectinload(MCPServerTool.server))
                 .order_by(MCPServerTool.tool_name)
             )
