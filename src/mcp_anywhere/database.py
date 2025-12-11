@@ -8,6 +8,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
+from mcp_anywhere.auth.models import UserToolPermission
 from mcp_anywhere.base import Base
 from mcp_anywhere.config import Config
 from mcp_anywhere.logging_config import get_logger
@@ -97,8 +98,11 @@ class MCPServerTool(Base):
         DateTime, nullable=False, default=datetime.utcnow
     )
 
-    # Relationship back to server
+    # Relationships
     server: Mapped["MCPServer"] = relationship(back_populates="tools")
+    user_permissions: Mapped[list["UserToolPermission"]] = relationship(
+        "UserToolPermission", back_populates="tool", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<MCPServerTool {self.tool_name}>"

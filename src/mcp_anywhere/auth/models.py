@@ -10,8 +10,9 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
+    Text, UniqueConstraint,
 )
+from sqlalchemy.orm import relationship
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mcp_anywhere.base import Base
@@ -30,6 +31,9 @@ class User(Base):
     email = Column(String(255), nullable=False, default="empty")
     type = Column(String(20), nullable=False, default=Config.USER_LOCAL)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    tool_permissions = relationship("UserToolPermission", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password: str) -> None:
         """Set password with proper hashing."""
@@ -235,6 +239,28 @@ class OAuth2RefreshToken(Base):
             ),
         }
 
+
+class UserToolPermission(Base):
+    """Model for user-specific tool permissions."""
+
+    __tablename__ = "user_tool_permissions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tool_id = Column(String(8), ForeignKey("mcp_server_tools.id", ondelete="CASCADE"), nullable=False)
+    permission = Column(String(10), nullable=False, default="allow")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="tool_permissions")
+    tool = relationship("MCPServerTool", back_populates="user_permissions")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'tool_id', name='uq_user_tool'),
+        Index('idx_user_tool_permissions_user', 'user_id'),
+        Index('idx_user_tool_permissions_tool', 'tool_id'),
+    )
 
 # Database indexes for optimal OAuth performance
 Index(

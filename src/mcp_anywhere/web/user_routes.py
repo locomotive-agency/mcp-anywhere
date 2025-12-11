@@ -4,14 +4,15 @@ from datetime import datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 
-from mcp_anywhere.auth.models import OAuth2Token, User
+from mcp_anywhere.auth.models import OAuth2Token, User, UserToolPermission
 from mcp_anywhere.config import Config
-from mcp_anywhere.database import get_async_session
+from mcp_anywhere.database import MCPServerTool, get_async_session
 from mcp_anywhere.logging_config import get_logger
 from mcp_anywhere.web.routes import get_current_user, get_template_context
 
@@ -554,6 +555,115 @@ async def user_change_role(request: Request) -> RedirectResponse | HTMLResponse:
         )
 
 
+@require_admin_role
+async def user_permissions(request: Request) -> HTMLResponse:
+    """Display tool permissions for a user."""
+    user_id = request.path_params["user_id"]
+
+    try:
+        async with get_async_session() as db_session:
+            # Get user
+            stmt = select(User).where(User.id == user_id)
+            result = await db_session.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if not user:
+                return templates.TemplateResponse(
+                    request,
+                    "404.html",
+                    get_template_context(
+                        request, message=f"User with ID '{user_id}' not found"
+                    ),
+                    status_code=404,
+                )
+
+            # Get all tools with their servers and existing permissions
+            tools_stmt = (
+                select(MCPServerTool)
+                .options(selectinload(MCPServerTool.server))
+                .order_by(MCPServerTool.tool_name)
+            )
+            tools_result = await db_session.execute(tools_stmt)
+            all_tools = tools_result.scalars().all()
+
+            # Get existing permissions for this user
+            perms_stmt = select(UserToolPermission).where(
+                UserToolPermission.user_id == user_id
+            )
+            perms_result = await db_session.execute(perms_stmt)
+            permissions = {p.tool_id: p.permission for p in perms_result.scalars().all()}
+
+            # Attach permission to each tool (default to 'allow')
+            tools_with_perms = []
+            for tool in all_tools:
+                tool.permission = permissions.get(tool.id, "allow")
+                tools_with_perms.append(tool)
+
+        return templates.TemplateResponse(
+            request,
+            "users/permissions.html",
+            get_template_context(request, user=user, tools=tools_with_perms),
+        )
+
+    except (RuntimeError, ValueError, ConnectionError) as e:
+        logger.exception(f"Error loading permissions for user {user_id}: {e}")
+        return templates.TemplateResponse(
+            request,
+            "500.html",
+            get_template_context(request, message="Error loading permissions"),
+            status_code=500,
+        )
+
+
+@require_admin_role
+async def user_toggle_permission(request: Request) -> Response:
+    """Toggle tool permission for a user via HTMX."""
+    user_id = request.path_params["user_id"]
+    tool_id = request.path_params["tool_id"]
+
+    try:
+        form_data = await request.form()
+        new_permission = form_data.get("permission", "allow")
+
+        # Validate permission value
+        if new_permission not in ["allow", "deny"]:
+            return Response(content="Invalid permission", status_code=400)
+
+        async with get_async_session() as db_session:
+            # Check if permission record exists
+            stmt = select(UserToolPermission).where(
+                UserToolPermission.user_id == user_id,
+                UserToolPermission.tool_id == tool_id,
+            )
+            result = await db_session.execute(stmt)
+            permission = result.scalar_one_or_none()
+
+            if permission:
+                # Update existing permission
+                permission.permission = new_permission
+                permission.updated_at = datetime.utcnow()
+            else:
+                # Create new permission record
+                permission = UserToolPermission(
+                    user_id=user_id, tool_id=tool_id, permission=new_permission
+                )
+                db_session.add(permission)
+
+            await db_session.commit()
+
+            logger.info(
+                f"Tool permission updated: user_id={user_id}, tool_id={tool_id}, permission={new_permission}"
+            )
+
+        return Response(content="", status_code=200)
+
+    except (RuntimeError, ValueError, ConnectionError, IntegrityError) as e:
+        logger.exception(
+            f"Error toggling permission for user {user_id}, tool {tool_id}: {e}"
+        )
+        return Response(content="Error updating permission", status_code=500)
+
+
 routes = [
     Route("/admin/users", endpoint=user_list, methods=["GET"]),
     Route("/admin/users/create", endpoint=user_create, methods=["GET", "POST"]),
@@ -567,6 +677,16 @@ routes = [
     Route(
         "/admin/users/{user_id}/change-role",
         endpoint=user_change_role,
+        methods=["POST"],
+    ),
+    Route(
+        "/admin/users/{user_id}/permissions",
+        endpoint=user_permissions,
+        methods=["GET"],
+    ),
+    Route(
+        "/admin/users/{user_id}/permissions/{tool_id}/toggle",
+        endpoint=user_toggle_permission,
         methods=["POST"],
     ),
     Route(
