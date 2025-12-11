@@ -269,7 +269,6 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tool Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Capability</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Enabled</th>
                     </tr>
                 </thead>
@@ -278,18 +277,6 @@
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ tool.tool_name }}</td>
                         <td class="px-6 py-4 text-sm text-gray-600">{{ tool.tool_description or "No description" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <form hx-post="/servers/{{ server.id }}/tools/{{ tool.id }}/capability"
-                                  hx-trigger="change"
-                                  hx-swap="none"
-                                  class="inline-flex items-center">
-                                <select name="capability"
-                                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {% if tool.tool_capability == 'read' %}bg-blue-50 text-blue-700{% else %}bg-orange-50 text-orange-700{% endif %}">
-                                    <option value="read" {% if tool.tool_capability == 'read' %}selected{% endif %}>Read</option>
-                                    <option value="write" {% if tool.tool_capability == 'write' %}selected{% endif %}>Write</option>
-                                </select>
-                            </form>
-                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% with server_id = server.id %}
                                 {% include "partials/tool_toggle.html" %}
