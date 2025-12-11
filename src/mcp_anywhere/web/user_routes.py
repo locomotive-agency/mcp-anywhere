@@ -594,16 +594,20 @@ async def user_permissions(request: Request) -> HTMLResponse:
             perms_result = await db_session.execute(perms_stmt)
             permissions = {p.tool_id: p.permission for p in perms_result.scalars().all()}
 
-            # Attach permission to each tool (default to 'allow')
-            tools_with_perms = []
+            # Group tools by server
+            from collections import defaultdict
+            servers_dict = defaultdict(list)
             for tool in all_tools:
                 tool.permission = permissions.get(tool.id, "allow")
-                tools_with_perms.append(tool)
+                servers_dict[tool.server.name].append(tool)
+
+            # Convert to sorted list of (server_name, tools) tuples
+            grouped_tools = sorted(servers_dict.items(), key=lambda x: x[0])
 
         return templates.TemplateResponse(
             request,
             "users/permissions.html",
-            get_template_context(request, user=user, tools=tools_with_perms),
+            get_template_context(request, user=user, grouped_tools=grouped_tools, total_tools=len(all_tools)),
         )
 
     except (RuntimeError, ValueError, ConnectionError) as e:

@@ -12,45 +12,69 @@
             </div>
         </div>
     </div>
+
+    <!-- Permissions Section -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
         <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-semibold">Available Tools</h3>
-            <span class="text-sm text-gray-500">{{ tools|length if tools else 0 }} tool(s)</span>
+            <span class="text-sm text-gray-500">{{ total_tools if total_tools else 0 }} tool(s)</span>
         </div>
 
-        {% if tools %}
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tool Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Server</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Permission</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for tool in tools %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ tool.tool_name }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600">{{ tool.tool_description or "No description" }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tool.server.name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <form hx-post="/admin/users/{{ user.id }}/permissions/{{ tool.id }}/toggle"
-                                  hx-trigger="change"
-                                  hx-swap="none"
-                                  class="inline-flex items-center">
-                                <select name="permission"
-                                        class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {% if tool.permission == 'allow' %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %}">
-                                    <option value="allow" {% if tool.permission == 'allow' %}selected{% endif %}>Allow</option>
-                                    <option value="deny" {% if tool.permission == 'deny' %}selected{% endif %}>Deny</option>
-                                </select>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        {% if grouped_tools %}
+        <div class="space-y-4">
+            {% for server_name, tools in grouped_tools %}
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <!-- Server Header (Accordion Toggle) -->
+                <button type="button"
+                        onclick="toggleAccordion('server-{{ loop.index }}')"
+                        class="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center space-x-3">
+                        <h4 class="text-sm font-semibold text-gray-900">{{ server_name }}</h4>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ tools|length }} tool{{ 's' if tools|length != 1 else '' }}
+                        </span>
+                    </div>
+                    <svg id="icon-server-{{ loop.index }}" class="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+
+                <!-- Tools Table (Collapsible Content) -->
+                <div id="server-{{ loop.index }}" class="accordion-content">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tool Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Permission</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for tool in tools %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ tool.tool_name }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-600">{{ tool.tool_description or "No description" }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                                        <form hx-post="/admin/users/{{ user.id }}/permissions/{{ tool.id }}/toggle"
+                                              hx-trigger="change"
+                                              hx-swap="none"
+                                              class="inline-flex items-center">
+                                            <select name="permission"
+                                                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {% if tool.permission == 'allow' %}bg-green-50 text-green-700{% else %}bg-red-50 text-red-700{% endif %}">
+                                                <option value="allow" {% if tool.permission == 'allow' %}selected{% endif %}>Allow</option>
+                                                <option value="deny" {% if tool.permission == 'deny' %}selected{% endif %}>Deny</option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
         {% else %}
         <div class="text-center py-8">
@@ -62,6 +86,8 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Back Navigation -->
     <div class="flex justify-start">
         <a href="/admin/users/{{ user.id }}"
            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
@@ -72,5 +98,46 @@
         </a>
     </div>
 </div>
+
+<style>
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.accordion-content.open {
+    max-height: 2000px;
+    transition: max-height 0.5s ease-in;
+}
+</style>
+
+<script>
+function toggleAccordion(id) {
+    const content = document.getElementById(id);
+    const icon = document.getElementById('icon-' + id);
+
+    if (content.classList.contains('open')) {
+        content.classList.remove('open');
+        icon.classList.remove('rotate-180');
+    } else {
+        content.classList.add('open');
+        icon.classList.add('rotate-180');
+    }
+}
+
+// Open all accordions by default on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const accordions = document.querySelectorAll('.accordion-content');
+    accordions.forEach(function(accordion) {
+        accordion.classList.add('open');
+    });
+
+    const icons = document.querySelectorAll('[id^="icon-server-"]');
+    icons.forEach(function(icon) {
+        icon.classList.add('rotate-180');
+    });
+});
+</script>
 
 {% endblock %}
