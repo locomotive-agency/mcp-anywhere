@@ -569,7 +569,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             (
                 token
                 for token, data in self.tokens.items()
-                if (not token.startswith("mcp_")) and data.client_id == client.client_id
+                if (not token.endswith("_btn")) and data.client_id == client.client_id
             ),
             None,
         )
