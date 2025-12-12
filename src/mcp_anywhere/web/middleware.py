@@ -178,5 +178,9 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                     status_code=403,
                 )
 
+        request.state.user = {
+            "user": request.session.get("username"),
+        }
+
         # Authentication successful, proceed with request
         return await call_next(request)
