@@ -12,6 +12,8 @@ References:
 from typing import Any
 
 from fastmcp.server.middleware import Middleware, MiddlewareContext
+from mcp.server.auth.middleware.auth_context import get_access_token
+from mcp.server.auth.provider import AccessToken
 from sqlalchemy import select
 
 from mcp_anywhere.database import MCPServerTool, get_async_session
@@ -36,6 +38,13 @@ class ToolFilterMiddleware(Middleware):
         Returns:
             list[Any]: Filtered list with disabled tools removed
         """
+
+        token: AccessToken | None = get_access_token()
+
+        user_id = token.claims.get("sub") if token else None
+
+        logger.info(f"Filtering tools list for user {user_id}")
+
         # Get the tools from the next middleware in the chain
         tools = await call_next(context)
 
