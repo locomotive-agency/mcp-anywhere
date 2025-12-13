@@ -39,12 +39,12 @@ class ToolFilterMiddleware(Middleware):
             list[Any]: Filtered list with disabled tools removed
         """
 
-        user = context.fastmcp_context.get_http_request().state.user["user"]
-
-        logger.info(f"Filtering tools list for user {user}")
-
         # Get the tools from the next middleware in the chain
         tools = await call_next(context)
+
+        state = context.fastmcp_context.get_http_request().state
+
+        logger.info(f"Filtering tools list for req state {state}")
 
         try:
             disabled_tools = await self._get_disabled_tools_async()
