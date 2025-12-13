@@ -178,6 +178,8 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                     status_code=403,
                 )
 
+        logger.debug(f"adding user {request.session.get("username")} to request")
+        
         request.state.user = {
             "user": request.session.get("username"),
         }
