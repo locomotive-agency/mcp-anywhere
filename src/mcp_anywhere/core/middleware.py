@@ -39,7 +39,7 @@ class ToolFilterMiddleware(Middleware):
             list[Any]: Filtered list with disabled tools removed
         """
 
-        user = context.fastmcp_context.get_http_request().get("user")
+        user = context.fastmcp_context.get_http_request().state.user["user"]
 
         logger.info(f"Filtering tools list for user {user}")
 
