@@ -16,6 +16,7 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken
 from sqlalchemy import select
 
+from mcp_anywhere.auth.models import UserToolPermission
 from mcp_anywhere.database import MCPServerTool, get_async_session
 from mcp_anywhere.logging_config import get_logger
 
@@ -46,6 +47,15 @@ class ToolFilterMiddleware(Middleware):
             user_data = context.fastmcp_context.get_http_request().state.user
             logger.debug(f"Authenticated MCP request for user_id: {user_data["id"]}")
 
+            try:
+                allowed_tools = self._get_allowed_tools_async(user_data["id"])
+                if allowed_tools:
+                    return allowed_tools
+            except Exception as exc:
+                logger.exception(f"Allowed Tool filtering skipped due to DB error: {exc}")
+                return tools
+
+
         try:
             disabled_tools = await self._get_disabled_tools_async()
         except Exception as exc:  # Do not fail tool listing on DB errors
@@ -60,6 +70,30 @@ class ToolFilterMiddleware(Middleware):
             f"ToolFilterMiddleware: filtered tools to {len(filtered)} enabled items"
         )
         return filtered
+
+    @staticmethod
+    async def _get_allowed_tools_async(user_id: str) -> set[str]:
+        """Query allowed user tool names from the database.
+
+        Returns:
+            set[str]: Set of allowed tool names
+        """
+        allowed_tools: set[str] = set()
+        async with get_async_session() as db_session:
+            stmt = (
+                select(MCPServerTool)
+                .join(UserToolPermission)
+                .where(
+                    UserToolPermission.user_id == user.id,
+                    UserToolPermission.permission == "allow",
+                )
+            )
+            result = await db_session.execute(stmt)
+            for name in result.scalars().all():
+                allowed_tools.add(name)
+        logger.debug(f"Allowed tools from DB for user {user_id}: {len(allowed_tools)}")
+        return allowed_tools
+
 
     @staticmethod
     async def _get_disabled_tools_async() -> set[str]:
