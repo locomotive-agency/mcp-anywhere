@@ -42,12 +42,6 @@ class ToolFilterMiddleware(Middleware):
         # Get the tools from the next middleware in the chain
         tools = await call_next(context)
 
-        user = context.fastmcp_context.get_http_request().state.user["user"]
-
-        logger.info(f"Filtering tools list for req state {user}")
-
-        logger.info(f"Filtering tools list {context.fastmcp_context.get_state("user")}")
-
         try:
             disabled_tools = await self._get_disabled_tools_async()
         except Exception as exc:  # Do not fail tool listing on DB errors
