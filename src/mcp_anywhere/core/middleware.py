@@ -42,6 +42,10 @@ class ToolFilterMiddleware(Middleware):
         # Get the tools from the next middleware in the chain
         tools = await call_next(context)
 
+        if context.fastmcp_context.get_http_request().state.user:
+            user_data = context.fastmcp_context.get_http_request().state.user
+            logger.debug(f"Authenticated MCP request for user_id: {user_data["id"]}")
+
         try:
             disabled_tools = await self._get_disabled_tools_async()
         except Exception as exc:  # Do not fail tool listing on DB errors
