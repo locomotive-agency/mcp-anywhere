@@ -47,7 +47,7 @@ class ToolFilterMiddleware(Middleware):
             user_data = context.fastmcp_context.get_http_request().state.user
 
             try:
-                allowed_tools = self._get_allowed_tools_async(user_data["id"])
+                allowed_tools = await self._get_allowed_tools_async(user_data["id"])
                 if allowed_tools:
                     return allowed_tools
             except Exception as exc:
