@@ -45,7 +45,6 @@ class ToolFilterMiddleware(Middleware):
 
         if context.fastmcp_context.get_http_request().state.user:
             user_data = context.fastmcp_context.get_http_request().state.user
-            logger.debug(f"Authenticated MCP request for user_id: {user_data["id"]}")
 
             try:
                 allowed_tools = self._get_allowed_tools_async(user_data["id"])
