@@ -51,7 +51,6 @@ class ToolFilterMiddleware(Middleware):
             logger.error(f"No user data attached to request, unable to filter user tooling")
             return tools
 
-
         try:
             disabled_tools = await self._get_denied_tools_async(user_data["id"])
         except Exception as exc:  # Do not fail tool listing on DB errors
@@ -75,10 +74,11 @@ class ToolFilterMiddleware(Middleware):
             set[str]: Set of denied / disabled tool names
         """
         logger.debug(f"Fetching tools from DB for user {user_id}")
-        allowed_tools: set[str] = set()
+        denied_tools: set[str] = set()
         async with get_async_session() as db_session:
             stmt = (
                 select(MCPServerTool.tool_name)
+                .where(MCPServerTool.is_enabled == False)
                 .join(UserToolPermission)
                 .where(
                     UserToolPermission.user_id == user_id,
@@ -87,50 +87,31 @@ class ToolFilterMiddleware(Middleware):
             )
             result = await db_session.execute(stmt)
             for name in result.scalars().all():
-                allowed_tools.add(name)
-        logger.debug(f"Denied tools from DB for user {user_id}: {len(allowed_tools)}")
-        return allowed_tools
+                denied_tools.add(name)
+        logger.debug(f"Denied / disabled tools from DB for user {user_id}: {len(denied_tools)}")
+        return denied_tools
 
-
-    @staticmethod
-    async def _get_disabled_tools_async() -> set[str]:
-        """Query disabled tool names from the database.
-
-        Returns:
-            set[str]: Set of disabled tool names
-        """
-        disabled: set[str] = set()
-        async with get_async_session() as db_session:
-            stmt = select(MCPServerTool.tool_name).where(
-                MCPServerTool.is_enabled == False
-            )
-            result = await db_session.execute(stmt)
-            for name in result.scalars().all():
-                disabled.add(name)
-        logger.debug(f"Disabled tools from DB: {len(disabled)}")
-        return disabled
-
-    def _filter_tools(self, tools: list[Any], disabled_tools: set[str]) -> list[Any]:
-        """Filter a list of tools based on disabled names.
+    def _filter_tools(self, tools: list[Any], denied_tools: set[str]) -> list[Any]:
+        """Filter a list of tools based on denied / disabled names.
 
         Args:
             tools: List of tool objects or dictionaries
-            disabled_tools: Set of disabled tool names
+            denied_tools: Set of denied / disabled tool names
 
         Returns:
             list[Any]: Filtered list containing only enabled tools
         """
         enabled: list[Any] = []
         for tool in tools:
-            if not self._is_tool_disabled(tool, disabled_tools):
+            if not self._is_tool_denied(tool, denied_tools):
                 enabled.append(tool)
             else:
                 logger.debug(f"Filtering disabled tool: {self._get_tool_name(tool)}")
         return enabled
 
-    def _is_tool_disabled(self, tool: Any, disabled_tools: set[str]) -> bool:
+    def _is_tool_denied(self, tool: Any, denied_tools: set[str]) -> bool:
         name = self._get_tool_name(tool)
-        return bool(name and name in disabled_tools)
+        return bool(name and name in denied_tools)
 
     @staticmethod
     def _get_tool_name(tool: Any) -> str:
