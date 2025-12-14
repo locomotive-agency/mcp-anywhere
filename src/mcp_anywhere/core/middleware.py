@@ -77,10 +77,11 @@ class ToolFilterMiddleware(Middleware):
         Returns:
             set[str]: Set of allowed tool names
         """
+        logger.debug(f"Fetching tools from DB for user {user_id}")
         allowed_tools: set[str] = set()
         async with get_async_session() as db_session:
             stmt = (
-                select(MCPServerTool)
+                select(MCPServerTool.tool_name)
                 .join(UserToolPermission)
                 .where(
                     UserToolPermission.user_id == user_id,
