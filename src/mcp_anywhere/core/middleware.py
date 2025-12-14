@@ -78,12 +78,11 @@ class ToolFilterMiddleware(Middleware):
         async with get_async_session() as db_session:
             stmt = (
                 select(MCPServerTool.tool_name)
-                .where(MCPServerTool.is_enabled == False)
                 .join(UserToolPermission)
                 .where(
                     UserToolPermission.user_id == user_id,
                     UserToolPermission.permission == "deny",
-                )
+                ).where(MCPServerTool.is_enabled == False)
             )
             result = await db_session.execute(stmt)
             for name in result.scalars().all():
