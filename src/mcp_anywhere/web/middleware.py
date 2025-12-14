@@ -59,7 +59,6 @@ class SessionAuthMiddleware(BasePathProtectionMiddleware):
             True if user is authenticated, False otherwise
         """
         user_id = request.session.get("user_id")
-
         return bool(user_id)
 
     async def dispatch(self, request: Request, call_next) -> Response:
@@ -178,11 +177,18 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                     status_code=403,
                 )
 
-        logger.debug(f"adding user {request.session.get("username")} to request")
-        
-        request.state.user = {
-            "user": request.session.get("username"),
-        }
+        user_id = oauth_provider.get_user_id_from_token(token)
+
+        if user_id:
+            request.state.user = {
+                "id": user_id,
+                "client_id": access_token.client_id,
+                "scopes": access_token.scopes,
+                "token": token,
+            }
+            logger.debug(f"Authenticated MCP request for user_id: {user_id}")
+        else:
+            logger.warning(f"Token valid but no user_id mapping found for token: {token[:10]}...")
 
         # Authentication successful, proceed with request
         return await call_next(request)

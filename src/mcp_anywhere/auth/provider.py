@@ -47,6 +47,8 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         self.client_cache: dict[str, OAuthClientInformationFull] = {}
         # Storage for OAuth requests during authorization flow
         self.oauth_requests: dict[str, dict[str, Any]] = {}
+        # Map access tokens to user IDs for user-specific filtering
+        self.token_users: dict[str, str] = {}
 
     async def create_authorization_code(
         self,
@@ -146,6 +148,9 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         # Store token for introspection
         self.access_tokens[token] = access_token
 
+        # Store user_id mapping for this token
+        self.token_users[token] = auth_code_data["user_id"]
+
         # Delete used authorization code
         del self.auth_codes[code_string]
 
@@ -169,6 +174,9 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         # Check expiration
         if time.time() > access_token.expires_at:
             del self.access_tokens[token]
+            # Clean up user mapping
+            if token in self.token_users:
+                del self.token_users[token]
             return None
 
         return access_token
@@ -179,8 +187,22 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         """Revoke an access token."""
         if token in self.access_tokens:
             del self.access_tokens[token]
+            # Clean up user mapping
+            if token in self.token_users:
+                del self.token_users[token]
             return True
         return False
+
+    def get_user_id_from_token(self, token: str) -> str | None:
+        """Get the user_id associated with an access token.
+
+        Args:
+            token: The access token string
+
+        Returns:
+            The user_id if found, None otherwise
+        """
+        return self.token_users.get(token)
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         """Get OAuth client information by client ID.
@@ -391,6 +413,10 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.state_mapping: dict[str, dict[str, str]] = {}
         self.token_mapping: dict[str, str] = {}
         self.state_resource_tokens: dict[str] = {}
+        # Map access tokens to user IDs for user-specific filtering
+        self.token_users: dict[str, str] = {}
+        # Map authorization codes to user emails for user lookup
+        self.code_emails: dict[str, str] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         """Get OAuth client information."""
@@ -531,6 +557,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.auth_codes[new_code] = auth_code
 
+        # Store email mapping for user lookup during token exchange
+        self.code_emails[new_code] = user_profile["email"]
+
         self.tokens[token] = AccessToken(
             token=token,
             client_id=client_id,
@@ -569,12 +598,28 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             (
                 token
                 for token, data in self.tokens.items()
-                if (not token.endswith("_btn")) and data.client_id == client.client_id),
+                if (not token.startswith("mcp_")) and data.client_id == client.client_id
+            ),
             None,
         )
 
         if google_token:
             self.token_mapping[mcp_token] = google_token
+
+        # Look up user email from authorization code and store user_id mapping
+        email = self.code_emails.get(authorization_code.code)
+        if email:
+            # Query database for user_id
+            async with self.db_session_factory() as session:
+                from mcp_anywhere.auth.models import User
+                stmt = select(User.id).where(User.email == email)
+                result = await session.execute(stmt)
+                user_id = result.scalar_one_or_none()
+                if user_id:
+                    self.token_users[mcp_token] = str(user_id)
+                    logger.debug(f"Mapped MCP token to user_id: {user_id}")
+            # Clean up email mapping
+            del self.code_emails[authorization_code.code]
 
         logger.debug(f"Providing authorization code to OAuth user: {mcp_token[:10]}...")
 
@@ -596,6 +641,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         # Check if expired
         if access_token.expires_at and access_token.expires_at < time.time():
             del self.tokens[token]
+            # Clean up user mapping
+            if token in self.token_users:
+                del self.token_users[token]
             return None
 
         return access_token
@@ -617,6 +665,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """Revoke a token."""
         if token in self.tokens:
             del self.tokens[token]
+            # Clean up user mapping
+            if token in self.token_users:
+                del self.token_users[token]
 
     async def introspect_token(self, token: str) -> AccessToken | None:
         """Introspect an access token for resource server validation.
@@ -633,9 +684,23 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         # Check expiration
         if time.time() > access_token.expires_at:
             del self.tokens[token]
+            # Clean up user mapping
+            if token in self.token_users:
+                del self.token_users[token]
             return None
 
         return access_token
+
+    def get_user_id_from_token(self, token: str) -> str | None:
+        """Get the user_id associated with an access token.
+
+        Args:
+            token: The access token string
+
+        Returns:
+            The user_id if found, None otherwise
+        """
+        return self.token_users.get(token)
 
     async def get_user_profile(self, access_token: str) -> dict[str, Any]:
 
