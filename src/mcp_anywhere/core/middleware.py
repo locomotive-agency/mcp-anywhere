@@ -83,7 +83,7 @@ class ToolFilterMiddleware(Middleware):
                 select(MCPServerTool)
                 .join(UserToolPermission)
                 .where(
-                    UserToolPermission.user_id == user.id,
+                    UserToolPermission.user_id == user_id,
                     UserToolPermission.permission == "allow",
                 )
             )
