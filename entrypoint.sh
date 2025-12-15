@@ -13,6 +13,19 @@ set -e
 # Logs will now go to the container's stdout/stderr and be captured by Fly.
 dockerd-entrypoint.sh &
 
+DB="${DATA_DIR}/mcp_anywhere.db"
+DB_BACKUP_FILE="${DATA_DIR}/mcp_anywhere.db.$(date +%s)"
+
+# Backup Database, if exists.
+if [ -e ${DB} ]; then
+    echo ">>> Running database backup to ${DB_BACKUP_FILE}"
+    sqlite3 ${DB} ".backup ${DB_BACKUP_FILE}"
+    echo ">>> Database backup complete."
+fi
+
+# Manage Migrations
+alembic upgrade head
+
 # Wait for the Docker socket to be available.
 # We'll poll for a maximum of 90 seconds.
 echo "Waiting for Docker daemon to start..."
