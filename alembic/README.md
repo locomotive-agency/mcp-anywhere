@@ -26,20 +26,11 @@ alembic history
 If you're upgrading from a version without migrations:
 
 ```bash
-# If your database already has the role field
 alembic stamp head
 
-# If your database is missing the role field
 alembic stamp 001
 alembic upgrade head
 ```
-
-See [MIGRATION_GUIDE.md](../MIGRATION_GUIDE.md) for detailed instructions.
-
-## Migration Files
-
-- `001_initial_schema.py` - Base schema (all tables without role field)
-- `002_add_user_roles.py` - Adds user role field (admin/user)
 
 ## Configuration
 

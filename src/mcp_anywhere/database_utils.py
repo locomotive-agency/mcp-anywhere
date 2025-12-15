@@ -41,16 +41,10 @@ async def store_server_tools(
         # Add new tools
         for tool_name in tools_to_add:
 
-            capability = "read"
-
-            if tool_name.lower() in ["write", "run", "make"]:
-                capability = "write"
-
             new_tool = MCPServerTool(
                 server_id=server_config.id,
                 tool_name=tool_name,
                 tool_description=discovered_tools_dict[tool_name]["description"],
-                tool_capability=capability,
                 is_enabled=True,
             )
             db_session.add(new_tool)

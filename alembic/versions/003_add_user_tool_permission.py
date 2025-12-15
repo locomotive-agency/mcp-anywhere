@@ -1,7 +1,7 @@
 """add user tool permission
 
-Revision ID: 004
-Revises: 003
+Revision ID: 003
+Revises: 002
 Create Date: 2025-12-11
 
 """
@@ -10,8 +10,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = '004'
-down_revision: Union[str, Sequence[str], None] = '003'
+revision: str = '003'
+down_revision: Union[str, Sequence[str], None] = '002'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
