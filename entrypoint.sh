@@ -7,6 +7,16 @@
 
 set -e
 
+DB=".data/mcp_anywhere.db"
+DB_BACKUP_FILE=".data/mcp_anywhere.db.$(date +%s)"
+
+# Backup Database, if exists.
+if [ -e ${DB} ]; then
+    echo ">>> Running database backup to ${DB_BACKUP_FILE}"
+    sqlite3 ${DB} ".backup ${DB_BACKUP_FILE}"
+    echo ">>> Database backup complete."
+fi
+
 # Start Docker daemon in the background
 # The 'dockerd-entrypoint.sh' script is the default entrypoint for the dind image.
 # We run it in the background to start the daemon.
