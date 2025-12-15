@@ -12,8 +12,6 @@ References:
 from typing import Any
 
 from fastmcp.server.middleware import Middleware, MiddlewareContext
-from mcp.server.auth.middleware.auth_context import get_access_token
-from mcp.server.auth.provider import AccessToken
 from sqlalchemy import select
 
 from mcp_anywhere.auth.models import UserToolPermission
@@ -52,7 +50,10 @@ class ToolFilterMiddleware(Middleware):
             return tools
 
         try:
-            disabled_tools = await self._get_denied_tools_async(user_data["id"])
+            disabled_tools = await self._get_disabled_tools_async()
+            denied_tools = await self._get_denied_tools_async(user_data["id"])
+
+            combined_tools = disabled_tools.union(denied_tools)
         except Exception as exc:  # Do not fail tool listing on DB errors
             logger.exception(f"Tool filtering skipped due to DB error: {exc}")
             return tools
@@ -60,18 +61,36 @@ class ToolFilterMiddleware(Middleware):
         if not disabled_tools:
             return tools
 
-        filtered = self._filter_tools(list(tools), disabled_tools)
+        filtered = self._filter_tools(list(tools), combined_tools)
         logger.info(
             f"ToolFilterMiddleware: filtered tools to {len(filtered)} allowed / enabled items"
         )
         return filtered
 
     @staticmethod
-    async def _get_denied_tools_async(user_id: str) -> set[str]:
-        """Query denied / disabled user tool names from the database.
+    async def _get_disabled_tools_async() -> set[str]:
+        """Query disabled tool names from the database.
 
         Returns:
-            set[str]: Set of denied / disabled tool names
+            set[str]: Set of disabled tool names
+        """
+        disabled: set[str] = set()
+        async with get_async_session() as db_session:
+            stmt = select(MCPServerTool.tool_name).where(
+                MCPServerTool.is_enabled == False
+            )
+            result = await db_session.execute(stmt)
+            for name in result.scalars().all():
+                disabled.add(name)
+        logger.debug(f"Disabled tools from DB: {len(disabled)}")
+        return disabled
+
+    @staticmethod
+    async def _get_denied_tools_async(user_id: str) -> set[str]:
+        """Query denied user tool names from the database.
+
+        Returns:
+            set[str]: Set of denied tool names
         """
         logger.debug(f"Fetching tools from DB for user {user_id}")
         denied_tools: set[str] = set()
@@ -82,12 +101,13 @@ class ToolFilterMiddleware(Middleware):
                 .where(
                     UserToolPermission.user_id == user_id,
                     UserToolPermission.permission == "deny",
-                ).where(MCPServerTool.is_enabled == False)
+                )
             )
             result = await db_session.execute(stmt)
             for name in result.scalars().all():
                 denied_tools.add(name)
-        logger.debug(f"Denied / disabled tools from DB for user {user_id}: {len(denied_tools)}")
+
+        logger.debug(f"Denied tools from DB for user {user_id}: {len(denied_tools)}")
         return denied_tools
 
     def _filter_tools(self, tools: list[Any], denied_tools: set[str]) -> list[Any]:
