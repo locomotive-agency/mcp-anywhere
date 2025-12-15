@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-DB=".data/mcp_anywhere.db"
-DB_BACKUP_FILE=".data/mcp_anywhere.db.$(date +%s)"
+DB="${DATA_DIR}/mcp_anywhere.db"
+DB_BACKUP_FILE="${DATA_DIR}/mcp_anywhere.db.$(date +%s)"
 
 # Backup Database, if exists.
 if [ -e ${DB} ]; then
