@@ -24,6 +24,7 @@ if [ -e ${DB} ]; then
 fi
 
 # Manage Migrations
+echo ">>> Running database migration..."
 alembic upgrade head
 
 # Wait for the Docker socket to be available.
