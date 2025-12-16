@@ -10,6 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
+from mcp_anywhere.config import Config
 
 # revision identifiers, used by Alembic.
 revision: str = '002'
@@ -23,8 +24,8 @@ def upgrade() -> None:
     # Using batch mode for SQLite compatibility
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.add_column(sa.Column('role', sa.String(length=20), nullable=False, server_default='user'))
-        batch_op.add_column(sa.Column('email', sa.String(length=255), nullable=False))
-        batch_op.add_column(sa.Column('type', sa.String(length=20), nullable=False))
+        batch_op.add_column(sa.Column('email', sa.String(length=255), nullable=False, server_default='not-set'))
+        batch_op.add_column(sa.Column('type', sa.String(length=20), nullable=False, server_default=Config.USER_ROLE))
 
     # Update existing admin user to have admin role
     op.execute(
