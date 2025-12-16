@@ -54,24 +54,14 @@ async def user_list(request: Request) -> HTMLResponse:
             result = await db_session.execute(stmt)
             users = result.scalars().all()
 
-
             user_data = []
             for user in users:
-                token_stmt = (
-                    select(OAuth2Token)
-                    .where(OAuth2Token.user_id == user.id)
-                    .where(OAuth2Token.is_revoked == False)  # noqa: E712
-                )
-                token_result = await db_session.execute(token_stmt)
-                active_tokens = len(token_result.scalars().all())
-
                 user_data.append(
                     {
                         "id": user.id,
                         "username": user.username,
                         "role": user.role,
                         "created_at": user.created_at,
-                        "active_tokens": active_tokens,
                     }
                 )
 
@@ -111,29 +101,12 @@ async def user_detail(request: Request) -> HTMLResponse:
                     status_code=404,
                 )
 
-            token_stmt = (
-                select(OAuth2Token)
-                .where(OAuth2Token.user_id == user_id)
-                .order_by(OAuth2Token.created_at.desc())
-            )
-            token_result = await db_session.execute(token_stmt)
-            tokens = token_result.scalars().all()
-
-            # Calculate statistics
-            active_tokens = sum(1 for t in tokens if t.is_valid())
-            expired_tokens = sum(1 for t in tokens if t.is_expired())
-            revoked_tokens = sum(1 for t in tokens if t.is_revoked)
-
         return templates.TemplateResponse(
             request,
             "users/detail.html",
             get_template_context(
                 request,
                 user=user,
-                tokens=tokens,
-                active_tokens=active_tokens,
-                expired_tokens=expired_tokens,
-                revoked_tokens=revoked_tokens,
             ),
         )
 
@@ -284,101 +257,6 @@ async def user_delete(request: Request) -> RedirectResponse | HTMLResponse:
             get_template_context(request, message="Error deleting user"),
             status_code=500,
         )
-
-
-@require_admin_role
-async def user_revoke_token(request: Request) -> RedirectResponse | HTMLResponse:
-    """Revoke a user's token."""
-    user_id = request.path_params["user_id"]
-    token_id = request.path_params["token_id"]
-
-    try:
-        async with get_async_session() as db_session:
-            # Get token
-            stmt = select(OAuth2Token).where(
-                OAuth2Token.id == token_id, OAuth2Token.user_id == user_id
-            )
-            result = await db_session.execute(stmt)
-            token = result.scalar_one_or_none()
-
-            if not token:
-                return templates.TemplateResponse(
-                    request,
-                    "404.html",
-                    get_template_context(request, message="Token not found"),
-                    status_code=404,
-                )
-
-            # Revoke token
-            token.is_revoked = True
-            await db_session.commit()
-
-            logger.info(f"Token {token_id} for user {user_id} revoked successfully")
-
-        # Return to user detail page
-        return RedirectResponse(url=f"/admin/users/{user_id}", status_code=302)
-
-    except (RuntimeError, ValueError, ConnectionError) as e:
-        logger.exception(f"Error revoking token {token_id}: {e}")
-        return templates.TemplateResponse(
-            request,
-            "500.html",
-            get_template_context(request, message="Error revoking token"),
-            status_code=500,
-        )
-
-
-@require_admin_role
-async def user_revoke_all_tokens(request: Request) -> RedirectResponse | HTMLResponse:
-    """Revoke all tokens for a user."""
-    user_id = request.path_params["user_id"]
-
-    try:
-        async with get_async_session() as db_session:
-            # Verify user exists
-            user_stmt = select(User).where(User.id == user_id)
-            user_result = await db_session.execute(user_stmt)
-            user = user_result.scalar_one_or_none()
-
-            if not user:
-                return templates.TemplateResponse(
-                    request,
-                    "404.html",
-                    get_template_context(
-                        request, message=f"User with ID '{user_id}' not found"
-                    ),
-                    status_code=404,
-                )
-
-            # Revoke all active tokens
-            token_stmt = (
-                select(OAuth2Token)
-                .where(OAuth2Token.user_id == user_id)
-                .where(OAuth2Token.is_revoked == False)  # noqa: E712
-            )
-            token_result = await db_session.execute(token_stmt)
-            tokens = token_result.scalars().all()
-
-            count = 0
-            for token in tokens:
-                token.is_revoked = True
-                count += 1
-
-            await db_session.commit()
-
-            logger.info(f"Revoked {count} tokens for user {user.username}")
-
-        return RedirectResponse(url=f"/admin/users/{user_id}", status_code=302)
-
-    except (RuntimeError, ValueError, ConnectionError) as e:
-        logger.exception(f"Error revoking all tokens for user {user_id}: {e}")
-        return templates.TemplateResponse(
-            request,
-            "500.html",
-            get_template_context(request, message="Error revoking tokens"),
-            status_code=500,
-        )
-
 
 @require_admin_role
 async def user_change_password_get(request: Request) -> HTMLResponse:
@@ -692,16 +570,6 @@ routes = [
     Route(
         "/admin/users/{user_id}/permissions/{tool_id}/toggle",
         endpoint=user_toggle_permission,
-        methods=["POST"],
-    ),
-    Route(
-        "/admin/users/{user_id}/tokens/{token_id}/revoke",
-        endpoint=user_revoke_token,
-        methods=["POST"],
-    ),
-    Route(
-        "/admin/users/{user_id}/tokens/revoke-all",
-        endpoint=user_revoke_all_tokens,
         methods=["POST"],
     ),
 ]
