@@ -99,6 +99,22 @@ $ docker logs mcp-anywhere-app
 
 Navigate to `http://<DOCKER-HOST>:8000/` to use the application
 
+Interact with the machine via CLI, useful for interacting with the database using `sqlite3`
+
+```bash
+# fetch machine id for your app
+$ fly --app mcp-anywhere-app machine list
+
+$ fly console --app mcp-anywhere-app --machine <MACHINE_ID>
+```
+
+Sample database commands, once logged in to the machine console
+```bash
+$ sqlite3 /.data/mcp_anywhere.db ".tables"
+
+$ sqlite3 /.data/mcp_anywhere.db "SELECT * FROM users;"
+```
+
 ## Usage
 
 ### Adding Tools from GitHub

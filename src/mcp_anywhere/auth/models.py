@@ -10,11 +10,13 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
-    Text,
+    Text, UniqueConstraint,
 )
+from sqlalchemy.orm import relationship
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mcp_anywhere.base import Base
+from mcp_anywhere.config import Config
 
 
 class User(Base):
@@ -25,7 +27,13 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String(80), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default=Config.USER_ROLE)
+    email = Column(String(255), nullable=False, default="empty")
+    type = Column(String(20), nullable=False, default=Config.USER_LOCAL)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    tool_permissions = relationship("UserToolPermission", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password: str) -> None:
         """Set password with proper hashing."""
@@ -35,11 +43,22 @@ class User(Base):
         """Check if provided password matches the stored hash."""
         return check_password_hash(self.password_hash, password)
 
+    def is_admin(self) -> bool:
+        """Check if user has admin role."""
+        return self.role == Config.ADMIN_ROLE
+
+    def is_local_user(self) -> bool:
+        """Check if user is local."""
+        return self.type == Config.USER_LOCAL
+
     def to_dict(self) -> dict:
         """Convert user to dictionary representation."""
         return {
             "id": self.id,
             "username": self.username,
+            "role": self.role,
+            "email": self.email,
+            "type": self.type,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -220,6 +239,28 @@ class OAuth2RefreshToken(Base):
             ),
         }
 
+
+class UserToolPermission(Base):
+    """Model for user-specific tool permissions."""
+
+    __tablename__ = "user_tool_permissions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    tool_id = Column(String(8), ForeignKey("mcp_server_tools.id", ondelete="CASCADE"), nullable=False)
+    permission = Column(String(10), nullable=False, default="allow")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="tool_permissions")
+    tool = relationship("MCPServerTool", back_populates="user_permissions")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'tool_id', name='uq_user_tool'),
+        Index('idx_user_tool_permissions_user', 'user_id'),
+        Index('idx_user_tool_permissions_tool', 'tool_id'),
+    )
 
 # Database indexes for optimal OAuth performance
 Index(
