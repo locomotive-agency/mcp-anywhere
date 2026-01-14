@@ -8,7 +8,7 @@ from mcp_anywhere.claude_analyzer import AsyncClaudeAnalyzer
 @pytest.mark.asyncio
 async def test_env_vars_extracted_from_claude():
     """Test that environment variables are properly extracted from Claude analysis."""
-    analyzer = AsyncClaudeAnalyzer()
+    analyzer = AsyncClaudeAnalyzer(api_key="test-api-key")
 
     # Mock Claude response with environment variables
     mock_response = """
@@ -49,7 +49,7 @@ ENV_VARS:
 
 def test_env_vars_form_data_structure():
     """Test that environment variables are structured correctly for form rendering."""
-    analyzer = AsyncClaudeAnalyzer()
+    analyzer = AsyncClaudeAnalyzer(api_key="test-api-key")
 
     mock_response = """
 RUNTIME: npx

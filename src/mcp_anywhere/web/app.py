@@ -69,6 +69,7 @@ You can use tools/list to see all available tools from all mounted servers.
     # Initialize container manager and mount servers (skip during tests)
     import os
 
+    container_manager = None
     if not os.environ.get("PYTEST_CURRENT_TEST"):
         container_manager = ContainerManager()
 
