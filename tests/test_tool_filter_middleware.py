@@ -9,7 +9,9 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.testing import skip_test
 
+from mcp_anywhere.auth.models import User, UserToolPermission
 from mcp_anywhere.core.middleware import ToolFilterMiddleware
 
 
@@ -107,37 +109,60 @@ async def test_get_disabled_tools_from_database():
             await conn.run_sync(Base.metadata.create_all)
 
         # Insert test data
-        async with TestSessionLocal() as session:
+        async with (TestSessionLocal() as session):
             # Create some enabled and disabled tools
-            tools = [
-                MCPServerTool(
+
+            enabled_tool_1 = MCPServerTool(
                     tool_name="enabled_tool_1",
                     server_id="server1",
                     tool_description="Enabled tool 1",
                     is_enabled=True,
-                ),
-                MCPServerTool(
+                )
+
+            disabled_tool_1 = MCPServerTool(
                     tool_name="disabled_tool_1",
                     server_id="server1",
                     tool_description="Disabled tool 1",
                     is_enabled=False,
-                ),
-                MCPServerTool(
+                )
+
+            disabled_tool_2 = MCPServerTool(
                     tool_name="disabled_tool_2",
-                    server_id="server2",
+                    server_id="server1",
                     tool_description="Disabled tool 2",
                     is_enabled=False,
-                ),
-                MCPServerTool(
-                    tool_name="enabled_tool_2",
-                    server_id="server2",
-                    tool_description="Enabled tool 2",
-                    is_enabled=True,
-                ),
-            ]
+                )
 
-            for tool in tools:
-                session.add(tool)
+            allowed_tool_1 = MCPServerTool(
+                    tool_name="allowed_tool_1",
+                    server_id="server2",
+                    tool_description="Allowed tool 1",
+                    is_enabled=True,
+                )
+
+            denied_tool_2 = MCPServerTool(
+                tool_name="denied_tool_2",
+                server_id="server2",
+                tool_description="Denied tool 2",
+                is_enabled=True,
+            )
+
+            user = User(username="testuser", role="user")
+            user.set_password("testpassword")
+            user.id = "1"
+            session.add(user)
+            await session.flush()
+
+            session.add_all([enabled_tool_1, disabled_tool_1, disabled_tool_2, allowed_tool_1, denied_tool_2])
+            await session.commit()
+            await session.flush()
+
+            # Create permissions
+            perm1 = UserToolPermission(user_id=user.id, tool_id=enabled_tool_1.id, permission="deny")
+            perm2 = UserToolPermission(user_id=user.id, tool_id=disabled_tool_1.id, permission="deny")
+            perm3 = UserToolPermission(user_id=user.id, tool_id=allowed_tool_1.id, permission="allow")
+            perm4 = UserToolPermission(user_id=user.id, tool_id=denied_tool_2.id, permission="deny")
+            session.add_all([perm1, perm2, perm3, perm4])
             await session.commit()
 
         # Create a proper async context manager mock
@@ -152,13 +177,22 @@ async def test_get_disabled_tools_from_database():
         with patch(
             "mcp_anywhere.core.middleware.get_async_session", side_effect=mock_session_context
         ):
+            user_id = "1"
             # Test the actual method
             middleware = ToolFilterMiddleware()
             disabled_tools = await middleware._get_disabled_tools_async()
 
             # Should return only the disabled tool names
             expected_disabled = {"disabled_tool_1", "disabled_tool_2"}
+            expected_denied_tools = {"disabled_tool_1", "enabled_tool_1", "denied_tool_2"}
+            expected_combined = {"disabled_tool_1", "disabled_tool_2", "enabled_tool_1", "denied_tool_2"}
             assert disabled_tools == expected_disabled
+
+            denied_tools = await middleware._get_denied_tools_async(user_id)
+            assert denied_tools == expected_denied_tools
+
+            combined = disabled_tools.union(denied_tools)
+            assert combined == expected_combined
 
         # Cleanup
         await test_engine.dispose()

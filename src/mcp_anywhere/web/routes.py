@@ -11,6 +11,7 @@ from starlette.routing import Route
 from starlette.templating import Jinja2Templates
 
 from mcp_anywhere.claude_analyzer import AsyncClaudeAnalyzer
+from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.database import MCPServer, MCPServerTool, get_async_session
 from mcp_anywhere.database_utils import store_server_tools
@@ -24,17 +25,22 @@ templates = Jinja2Templates(directory="src/mcp_anywhere/web/templates")
 class CurrentUser:
     """Simple current user object for template context."""
 
-    def __init__(self, user_id: str = None, username: str = None) -> None:
+    def __init__(
+        self, user_id: str = None, username: str = None, role: str = None
+    ) -> None:
         self.user_id = user_id
         self.username = username
+        self.role = role
         self.is_authenticated = bool(user_id)
+        self.is_admin = role == Config.ADMIN_ROLE
 
 
 def get_current_user(request: Request) -> CurrentUser:
     """Get current user from session."""
     user_id = request.session.get("user_id")
     username = request.session.get("username")
-    return CurrentUser(user_id, username)
+    role = request.session.get("role")
+    return CurrentUser(user_id, username, role)
 
 
 def get_template_context(request: Request, **kwargs) -> dict:

@@ -40,6 +40,7 @@ async def store_server_tools(
 
         # Add new tools
         for tool_name in tools_to_add:
+
             new_tool = MCPServerTool(
                 server_id=server_config.id,
                 tool_name=tool_name,
@@ -72,4 +73,7 @@ async def store_server_tools(
     except (RuntimeError, ValueError, ConnectionError, IntegrityError) as e:
         logger.exception(f"Database error storing tools for {server_config.name}: {e}")
         await db_session.rollback()
+        raise
+    except Exception as e:
+        logger.exception(f"Database error storing tools for {server_config.name}: {e}")
         raise

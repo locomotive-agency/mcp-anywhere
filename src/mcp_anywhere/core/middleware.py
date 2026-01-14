@@ -14,6 +14,7 @@ from typing import Any
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from sqlalchemy import select
 
+from mcp_anywhere.auth.models import UserToolPermission
 from mcp_anywhere.database import MCPServerTool, get_async_session
 from mcp_anywhere.logging_config import get_logger
 
@@ -36,11 +37,23 @@ class ToolFilterMiddleware(Middleware):
         Returns:
             list[Any]: Filtered list with disabled tools removed
         """
+
         # Get the tools from the next middleware in the chain
         tools = await call_next(context)
 
+        user_data = []
+
+        if context.fastmcp_context.get_http_request().state.user:
+            user_data = context.fastmcp_context.get_http_request().state.user
+        else:
+            logger.error(f"No user data attached to request, unable to filter user tooling")
+            return tools
+
         try:
             disabled_tools = await self._get_disabled_tools_async()
+            denied_tools = await self._get_denied_tools_async(user_data["id"])
+
+            combined_tools = disabled_tools.union(denied_tools)
         except Exception as exc:  # Do not fail tool listing on DB errors
             logger.exception(f"Tool filtering skipped due to DB error: {exc}")
             return tools
@@ -48,9 +61,9 @@ class ToolFilterMiddleware(Middleware):
         if not disabled_tools:
             return tools
 
-        filtered = self._filter_tools(list(tools), disabled_tools)
+        filtered = self._filter_tools(list(tools), combined_tools)
         logger.info(
-            f"ToolFilterMiddleware: filtered tools to {len(filtered)} enabled items"
+            f"ToolFilterMiddleware: filtered tools to {len(filtered)} allowed / enabled items"
         )
         return filtered
 
@@ -72,27 +85,52 @@ class ToolFilterMiddleware(Middleware):
         logger.debug(f"Disabled tools from DB: {len(disabled)}")
         return disabled
 
-    def _filter_tools(self, tools: list[Any], disabled_tools: set[str]) -> list[Any]:
-        """Filter a list of tools based on disabled names.
+    @staticmethod
+    async def _get_denied_tools_async(user_id: str) -> set[str]:
+        """Query denied user tool names from the database.
+
+        Returns:
+            set[str]: Set of denied tool names
+        """
+        logger.debug(f"Fetching tools from DB for user {user_id}")
+        denied_tools: set[str] = set()
+        async with get_async_session() as db_session:
+            stmt = (
+                select(MCPServerTool.tool_name)
+                .join(UserToolPermission)
+                .where(
+                    UserToolPermission.user_id == user_id,
+                    UserToolPermission.permission == "deny",
+                )
+            )
+            result = await db_session.execute(stmt)
+            for name in result.scalars().all():
+                denied_tools.add(name)
+
+        logger.debug(f"Denied tools from DB for user {user_id}: {len(denied_tools)}")
+        return denied_tools
+
+    def _filter_tools(self, tools: list[Any], denied_tools: set[str]) -> list[Any]:
+        """Filter a list of tools based on denied / disabled names.
 
         Args:
             tools: List of tool objects or dictionaries
-            disabled_tools: Set of disabled tool names
+            denied_tools: Set of denied / disabled tool names
 
         Returns:
             list[Any]: Filtered list containing only enabled tools
         """
         enabled: list[Any] = []
         for tool in tools:
-            if not self._is_tool_disabled(tool, disabled_tools):
+            if not self._is_tool_denied(tool, denied_tools):
                 enabled.append(tool)
             else:
                 logger.debug(f"Filtering disabled tool: {self._get_tool_name(tool)}")
         return enabled
 
-    def _is_tool_disabled(self, tool: Any, disabled_tools: set[str]) -> bool:
+    def _is_tool_denied(self, tool: Any, denied_tools: set[str]) -> bool:
         name = self._get_tool_name(tool)
-        return bool(name and name in disabled_tools)
+        return bool(name and name in denied_tools)
 
     @staticmethod
     def _get_tool_name(tool: Any) -> str:

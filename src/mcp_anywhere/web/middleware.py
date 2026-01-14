@@ -161,5 +161,34 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
                 status_code=401,
             )
 
+        # For Google OAuth, check that user is part of allowed domains
+        if isinstance(oauth_provider, GoogleOAuthProvider):
+            logger.debug("Fetching Google user details")
+            google_user = await oauth_provider.get_user_profile(access_token.token)
+
+            email = google_user["email"]
+
+            if not await oauth_provider.user_has_domain_authorization(email):
+                return JSONResponse(
+                    {
+                        "error": "User Unauthorized",
+                        "error_description": "User not member of authorized domain",
+                    },
+                    status_code=403,
+                )
+
+        user_id = oauth_provider.get_user_id_from_token(token)
+
+        if user_id:
+            request.state.user = {
+                "id": user_id,
+                "client_id": access_token.client_id,
+                "scopes": access_token.scopes,
+                "token": token,
+            }
+            logger.debug(f"Authenticated MCP request for user_id: {user_id}")
+        else:
+            logger.warning(f"Token valid but no user_id mapping found for token: {token[:10]}...")
+
         # Authentication successful, proceed with request
         return await call_next(request)

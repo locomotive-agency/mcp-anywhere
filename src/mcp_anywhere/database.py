@@ -8,6 +8,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
+from mcp_anywhere.auth.models import UserToolPermission
 from mcp_anywhere.base import Base
 from mcp_anywhere.config import Config
 from mcp_anywhere.logging_config import get_logger
@@ -96,8 +97,11 @@ class MCPServerTool(Base):
         DateTime, nullable=False, default=datetime.utcnow
     )
 
-    # Relationship back to server
+    # Relationships
     server: Mapped["MCPServer"] = relationship(back_populates="tools")
+    user_permissions: Mapped[list["UserToolPermission"]] = relationship(
+        "UserToolPermission", back_populates="tool", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<MCPServerTool {self.tool_name}>"
@@ -167,7 +171,9 @@ class DatabaseManager:
                 self._engine, class_=AsyncSession, expire_on_commit=False
             )
 
-            # Create tables
+            # Create tables using SQLAlchemy metadata
+            # Note: For production, use Alembic migrations instead
+            # Run: alembic upgrade head
             async with self._engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
 

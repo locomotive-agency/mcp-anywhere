@@ -1,5 +1,5 @@
 FROM docker:25.0-dind
-RUN apk update && apk upgrade --no-interactive && apk add tini
+RUN apk update && apk upgrade --no-interactive && apk add tini sqlite
 RUN apk add --no-cache python3 git fuse-overlayfs tini nodejs-current npm
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app

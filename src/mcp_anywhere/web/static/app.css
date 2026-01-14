@@ -107,6 +107,8 @@
   height: 2.5rem; /* 40px */
   width: auto;
   max-width: 240px;
+  position: relative;
+  z-index: 1;
 }
 
 .logo-svg {
