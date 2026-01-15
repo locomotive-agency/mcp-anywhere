@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('description', sa.Text),
     sa.Column('value_type', sa.String(length=20), nullable=False, default="string"),
     sa.Column('updated_at', sa.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow),
-    sa.Column('updated_by', sa.String(length=100), nullable=False, default="string"),
+    sa.Column('updated_by', sa.String(length=100)),
     if_not_exists=True
     )
 
