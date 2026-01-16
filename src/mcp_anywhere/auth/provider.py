@@ -29,6 +29,7 @@ from starlette.requests import Request
 from mcp_anywhere.auth.models import OAuth2Client
 from mcp_anywhere.config import Config
 from mcp_anywhere.logging_config import get_logger
+from mcp_anywhere.web.settings_routes import get_setting
 
 logger = get_logger(__name__)
 
@@ -725,12 +726,14 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         logger.debug(f"Checking if {email} in domain {Config.OAUTH_USER_ALLOWED_DOMAIN}")
 
-        if Config.OAUTH_USER_ALLOWED_DOMAIN is None:
+        allowed_domain = await get_setting("oauth_user_allowed_domain")
+
+        if allowed_domain is None:
             return True
 
         domain = email.split("@")[1]
 
-        if domain == Config.OAUTH_USER_ALLOWED_DOMAIN:
+        if domain == allowed_domain:
             return True
 
         return False

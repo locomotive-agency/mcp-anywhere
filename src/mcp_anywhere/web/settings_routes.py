@@ -26,6 +26,35 @@ DEFAULT_SETTINGS = [
 ]
 
 
+async def get_setting(key: str, default: str | None = None) -> str | None:
+    try:
+        async with get_async_session() as session:
+            stmt = select(InstanceSetting).where(InstanceSetting.key == key)
+            result = await session.execute(stmt)
+            setting = result.scalar_one_or_none()
+
+            if setting:
+                return setting.value
+            return default
+    except Exception as e:
+        logger.warning(f"Error retrieving setting '{key}': {e}")
+        return default
+
+
+async def get_setting_bool(key: str, default: bool = False) -> bool:
+    value = await get_setting(key, str(default).lower())
+    return value == "true"
+
+
+async def get_setting_int(key: str, default: int = 0) -> int:
+    value = await get_setting(key, str(default))
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid integer value for setting '{key}': {value}")
+        return default
+
+
 async def initialize_default_settings():
     async with get_async_session() as session:
         for setting_data in DEFAULT_SETTINGS:

@@ -8,7 +8,12 @@ from sqlalchemy.orm import sessionmaker
 
 from mcp_anywhere.base import Base
 from mcp_anywhere.web.settings_model import InstanceSetting
-from mcp_anywhere.web.settings_routes import initialize_default_settings
+from mcp_anywhere.web.settings_routes import (
+    get_setting,
+    get_setting_bool,
+    get_setting_int,
+    initialize_default_settings,
+)
 
 
 @pytest.mark.asyncio
@@ -44,13 +49,12 @@ async def test_initialize_default_settings():
                 result = await session.execute(select(InstanceSetting))
                 settings = result.scalars().all()
 
+                # Verify at least one setting was created
                 assert len(settings) > 0
 
+                # Verify the OAuth domain setting exists (as per current DEFAULT_SETTINGS)
                 setting_keys = {s.key for s in settings}
-                assert "session_max_age" in setting_keys
-                assert "default_host" in setting_keys
-                assert "default_port" in setting_keys
-                assert "log_level" in setting_keys
+                assert "oauth_user_allowed_domain" in setting_keys
 
         await test_engine.dispose()
 
@@ -116,6 +120,101 @@ async def test_settings_model():
             assert queried_settings[1].value == "value1"
             assert queried_settings[2].key == "test_setting_2"
             assert queried_settings[2].value == "123"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+@pytest.mark.asyncio
+async def test_get_setting_helpers():
+    """Test the convenience functions for getting settings."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        # Insert test settings
+        async with TestSessionLocal() as session:
+            settings = [
+                InstanceSetting(
+                    key="test_string",
+                    value="hello",
+                    category="Test",
+                    label="Test String",
+                    value_type="string",
+                ),
+                InstanceSetting(
+                    key="test_int",
+                    value="42",
+                    category="Test",
+                    label="Test Integer",
+                    value_type="integer",
+                ),
+                InstanceSetting(
+                    key="test_bool_true",
+                    value="true",
+                    category="Test",
+                    label="Test Boolean True",
+                    value_type="boolean",
+                ),
+                InstanceSetting(
+                    key="test_bool_false",
+                    value="false",
+                    category="Test",
+                    label="Test Boolean False",
+                    value_type="boolean",
+                ),
+            ]
+            session.add_all(settings)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            # Test get_setting
+            value = await get_setting("test_string")
+            assert value == "hello"
+
+            # Test get_setting with default for missing key
+            value = await get_setting("nonexistent", "default_value")
+            assert value == "default_value"
+
+            # Test get_setting_int
+            int_value = await get_setting_int("test_int")
+            assert int_value == 42
+            assert isinstance(int_value, int)
+
+            # Test get_setting_int with default for missing key
+            int_value = await get_setting_int("nonexistent", 999)
+            assert int_value == 999
+
+            # Test get_setting_bool
+            bool_value = await get_setting_bool("test_bool_true")
+            assert bool_value is True
+
+            bool_value = await get_setting_bool("test_bool_false")
+            assert bool_value is False
+
+            # Test get_setting_bool with default for missing key
+            bool_value = await get_setting_bool("nonexistent", True)
+            assert bool_value is True
 
         await test_engine.dispose()
 
