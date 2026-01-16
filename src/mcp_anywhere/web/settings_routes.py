@@ -27,7 +27,6 @@ DEFAULT_SETTINGS = [
 
 
 async def initialize_default_settings():
-    """Initialize database with default settings if they don't exist."""
     async with get_async_session() as session:
         for setting_data in DEFAULT_SETTINGS:
 
@@ -54,7 +53,6 @@ async def initialize_default_settings():
 
 @require_admin_role
 async def settings_view(request: Request) -> HTMLResponse:
-    """Display instance settings page."""
     try:
         async with get_async_session() as session:
             stmt = select(InstanceSetting).order_by(
