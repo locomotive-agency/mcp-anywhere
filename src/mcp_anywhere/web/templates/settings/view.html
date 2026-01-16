@@ -84,13 +84,13 @@
                                        id="setting_{{ setting.key }}"
                                        name="setting_{{ setting.key }}"
                                        value="{{ setting.value }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                       class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             {% else %}
                                 <input type="text"
                                        id="setting_{{ setting.key }}"
                                        name="setting_{{ setting.key }}"
                                        value="{{ setting.value }}"
-                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                       class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                        {% if setting.key == 'oauth_user_allowed_domain' %}placeholder="example.com"{% endif %}>
                             {% endif %}
 
