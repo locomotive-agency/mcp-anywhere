@@ -1,5 +1,3 @@
-"""Database model for instance settings."""
-
 from datetime import datetime
 
 from sqlalchemy import DateTime, String, Text
@@ -9,12 +7,6 @@ from mcp_anywhere.base import Base
 
 
 class InstanceSetting(Base):
-    """Model for storing instance-wide configuration settings.
-
-    This model stores settings that can be updated by admin users through the UI.
-    Each setting has a key, value, category, and metadata for display.
-    """
-
     __tablename__ = "instance_settings"
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)

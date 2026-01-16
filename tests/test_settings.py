@@ -129,7 +129,6 @@ async def test_settings_model():
 
 @pytest.mark.asyncio
 async def test_get_setting_helpers():
-    """Test the convenience functions for getting settings."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
         db_path = tmp_db.name
 
@@ -142,7 +141,6 @@ async def test_get_setting_helpers():
         async with test_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-        # Insert test settings
         async with TestSessionLocal() as session:
             settings = [
                 InstanceSetting(
