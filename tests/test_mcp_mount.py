@@ -119,7 +119,7 @@ async def test_ensure_lifespan_started_only_runs_once():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             # Keep running
             await asyncio.Event().wait()
