@@ -11,6 +11,7 @@ from mcp_anywhere.web.mcp_mount import (
 
 @pytest.mark.asyncio
 async def test_wrapper_initialization():
+    """Verify that FastMCPLifespanWrapper initializes its internal state correctly."""
 
     mock_app = Mock()
     wrapper = FastMCPLifespanWrapper(mock_app)
