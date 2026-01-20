@@ -466,6 +466,7 @@ async def test_user_with_no_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_permission_counts_by_type(db_session: AsyncSession):
+    """Verify that permission counts by type ('allow' and 'deny') are correct for a user with mixed permissions."""
 
     user = User(username="testuser", role="user")
     user.set_password("testpass")
