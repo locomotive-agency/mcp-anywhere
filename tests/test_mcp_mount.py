@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
@@ -119,7 +120,7 @@ async def test_ensure_lifespan_started_only_runs_once():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             # Keep running
             await asyncio.Event().wait()
@@ -136,13 +137,12 @@ async def test_ensure_lifespan_started_only_runs_once():
         assert wrapper.lifespan_task is initial_task
         assert mock_app.call_count == 1
 
-    if wrapper.lifespan_task and not wrapper.lifespan_task.done():
-        wrapper.lifespan_task.cancel()
-        try:
-            await wrapper.lifespan_task
-        except asyncio.CancelledError:
-            pass
+    with contextlib.suppress(asyncio.CancelledError):
 
+        if wrapper.lifespan_task and not wrapper.lifespan_task.done():
+            wrapper.lifespan_task.cancel()
+
+            await wrapper.lifespan_task
 
 @pytest.mark.asyncio
 async def test_lifespan_scope_structure():
@@ -153,7 +153,7 @@ async def test_lifespan_scope_structure():
         nonlocal scope_received
         if scope["type"] == "lifespan":
             scope_received = scope
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             # Keep running
             await asyncio.Event().wait()
@@ -171,22 +171,20 @@ async def test_lifespan_scope_structure():
     assert scope_received["asgi"]["version"] == "3.0"
     assert "state" in scope_received
 
-    if wrapper.lifespan_task and not wrapper.lifespan_task.done():
-        wrapper.lifespan_task.cancel()
-        try:
-            await wrapper.lifespan_task
-        except asyncio.CancelledError:
-            pass
+    with contextlib.suppress(asyncio.CancelledError):
+        if wrapper.lifespan_task and not wrapper.lifespan_task.done():
+            wrapper.lifespan_task.cancel()
 
+            await wrapper.lifespan_task
 
 @pytest.mark.asyncio
 async def test_shutdown_completes_successfully():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.shutdown.complete"})
 
     mock_app = AsyncMock(side_effect=mock_app_handler)
@@ -209,7 +207,7 @@ async def test_shutdown_timeout_cancels_task():
 
     async def never_complete(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             # Never complete shutdown
             await asyncio.sleep(1000)
@@ -256,9 +254,9 @@ async def test_shutdown_multiple_times():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.shutdown.complete"})
 
     mock_app = AsyncMock(side_effect=mock_app_handler)
@@ -305,7 +303,7 @@ async def test_concurrent_request_handling():
     async def mock_app_handler(scope, receive, send):
         nonlocal call_count
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             await asyncio.Event().wait()
         else:
@@ -330,13 +328,11 @@ async def test_concurrent_request_handling():
     assert call_count == 3
     assert wrapper.lifespan_started is True
 
-    if wrapper.lifespan_task and not wrapper.lifespan_task.done():
-        wrapper.lifespan_task.cancel()
-        try:
-            await wrapper.lifespan_task
-        except asyncio.CancelledError:
-            pass
+    with contextlib.suppress(asyncio.CancelledError):
+        if wrapper.lifespan_task and not wrapper.lifespan_task.done():
+            wrapper.lifespan_task.cancel()
 
+            await wrapper.lifespan_task
 
 @pytest.mark.asyncio
 async def test_lifespan_receive_state_machine():
@@ -377,11 +373,11 @@ async def test_lifespan_send_handles_all_message_types():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             sent_messages.append("startup.complete")
 
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.shutdown.complete"})
             sent_messages.append("shutdown.complete")
 
@@ -404,7 +400,7 @@ async def test_request_forwarding_preserves_scope_receive_send():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             await asyncio.Event().wait()
         else:
@@ -426,12 +422,11 @@ async def test_request_forwarding_preserves_scope_receive_send():
     assert forwarded_receive is test_receive
     assert forwarded_send is test_send
 
-    if wrapper.lifespan_task and not wrapper.lifespan_task.done():
-        wrapper.lifespan_task.cancel()
-        try:
+    with contextlib.suppress(asyncio.CancelledError):
+        if wrapper.lifespan_task and not wrapper.lifespan_task.done():
+            wrapper.lifespan_task.cancel()
+
             await wrapper.lifespan_task
-        except asyncio.CancelledError:
-            pass
 
 
 @pytest.mark.asyncio
@@ -439,13 +434,11 @@ async def test_shutdown_handles_cancelled_error():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
 
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.sleep(1000)
-            except asyncio.CancelledError:
-                raise
 
     mock_app = AsyncMock(side_effect=mock_app_handler)
     wrapper = FastMCPLifespanWrapper(mock_app)
@@ -471,7 +464,7 @@ async def test_startup_delay_completes():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             await asyncio.Event().wait()
 
@@ -483,12 +476,11 @@ async def test_startup_delay_completes():
 
     assert sleep_called is True
 
-    if wrapper.lifespan_task and not wrapper.lifespan_task.done():
-        wrapper.lifespan_task.cancel()
-        try:
+    with contextlib.suppress(asyncio.CancelledError):
+        if wrapper.lifespan_task and not wrapper.lifespan_task.done():
+            wrapper.lifespan_task.cancel()
+
             await wrapper.lifespan_task
-        except asyncio.CancelledError:
-            pass
 
 
 @pytest.mark.asyncio
@@ -496,7 +488,7 @@ async def test_lifespan_task_creation():
 
     async def mock_app_handler(scope, receive, send):
         if scope["type"] == "lifespan":
-            msg = await receive()
+            await receive()
             await send({"type": "lifespan.startup.complete"})
             await asyncio.Event().wait()
 
@@ -512,9 +504,8 @@ async def test_lifespan_task_creation():
     assert isinstance(wrapper.lifespan_task, asyncio.Task)
     assert not wrapper.lifespan_task.done()
 
-    if wrapper.lifespan_task and not wrapper.lifespan_task.done():
-        wrapper.lifespan_task.cancel()
-        try:
+    with contextlib.suppress(asyncio.CancelledError):
+        if wrapper.lifespan_task and not wrapper.lifespan_task.done():
+            wrapper.lifespan_task.cancel()
+
             await wrapper.lifespan_task
-        except asyncio.CancelledError:
-            pass
