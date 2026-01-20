@@ -84,7 +84,7 @@ async def test_delete_user_with_many_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_permission_isolation_between_users(db_session: AsyncSession):
-
+    """Ensure that updating one user's permission does not affect another user's permission on the same tool."""
     user1 = User(username="user1", role="user")
     user1.set_password("pass1")
     user2 = User(username="user2", role="user")
@@ -195,7 +195,7 @@ async def test_delete_tool_with_many_user_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_cannot_create_duplicate_permissions(db_session: AsyncSession):
-
+    """Ensure duplicate UserToolPermission entries for the same user and tool are rejected and the original permission is preserved."""
     user = User(username="testuser", role="user")
     user.set_password("testpass")
     db_session.add(user)
@@ -482,6 +482,7 @@ async def test_user_with_no_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_permission_counts_by_type(db_session: AsyncSession):
+    """Verify that permission counts by type ('allow' and 'deny') are correct for a user with mixed permissions."""
 
     user = User(username="testuser", role="user")
     user.set_password("testpass")
