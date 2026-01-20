@@ -245,6 +245,7 @@ async def test_cannot_create_duplicate_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_bulk_permission_toggle(db_session: AsyncSession):
+    """Test bulk toggling of many user tool permissions and ensure it remains performant."""
 
     user = User(username="bulkuser", role="user")
     user.set_password("testpass")
