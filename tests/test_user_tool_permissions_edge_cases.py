@@ -313,7 +313,7 @@ async def test_bulk_permission_toggle(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_query_permissions_for_nonexistent_user(db_session: AsyncSession):
-
+    """Querying permissions for a nonexistent user should return an empty result set."""
     fake_user_id = "nonexistent-user-id"
     stmt = select(UserToolPermission).where(UserToolPermission.user_id == fake_user_id)
     result = await db_session.execute(stmt)
