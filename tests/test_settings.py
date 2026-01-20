@@ -582,3 +582,608 @@ async def test_settings_view_database_error():
                 assert "Failed to load settings" in context["error"]
 
                 assert call_args[1]["status_code"] == 500
+
+
+@pytest.mark.asyncio
+async def test_settings_update_string_value():
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with TestSessionLocal() as session:
+            setting = InstanceSetting(
+                key="test_host",
+                value="localhost",
+                category="Server",
+                label="Test Host",
+                value_type="string",
+            )
+            session.add(setting)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+        from mcp_anywhere.web.settings_routes import settings_update
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        mock_request = MagicMock()
+        mock_request.session = {}
+        mock_request.form = AsyncMock(return_value={"setting_test_host": "example.com"})
+
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "admin"
+        mock_user.is_admin = True
+        mock_user.is_authenticated = True
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            with patch(
+                "mcp_anywhere.web.user_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                with patch(
+                    "mcp_anywhere.web.settings_routes.get_current_user",
+                    return_value=mock_user,
+                ):
+                    response = await settings_update(mock_request)
+
+                    from starlette.responses import RedirectResponse
+
+                    assert isinstance(response, RedirectResponse)
+                    assert "/admin/settings?success=" in response.headers["location"]
+
+                    async with TestSessionLocal() as session:
+                        from sqlalchemy import select
+
+                        result = await session.execute(
+                            select(InstanceSetting).where(
+                                InstanceSetting.key == "test_host"
+                            )
+                        )
+                        updated_setting = result.scalar_one()
+                        assert updated_setting.value == "example.com"
+                        assert updated_setting.updated_by == "admin"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_settings_update_integer_value():
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with TestSessionLocal() as session:
+            setting = InstanceSetting(
+                key="test_timeout",
+                value="300",
+                category="Server",
+                label="Test Timeout",
+                value_type="integer",
+            )
+            session.add(setting)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+        from mcp_anywhere.web.settings_routes import settings_update
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        mock_request = MagicMock()
+        mock_request.session = {}
+        mock_request.form = AsyncMock(return_value={"setting_test_timeout": "600"})
+
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "admin"
+        mock_user.is_admin = True
+        mock_user.is_authenticated = True
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            with patch(
+                "mcp_anywhere.web.user_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                with patch(
+                    "mcp_anywhere.web.settings_routes.get_current_user",
+                    return_value=mock_user,
+                ):
+                    response = await settings_update(mock_request)
+
+                    from starlette.responses import RedirectResponse
+
+                    assert isinstance(response, RedirectResponse)
+
+                    async with TestSessionLocal() as session:
+                        from sqlalchemy import select
+
+                        result = await session.execute(
+                            select(InstanceSetting).where(
+                                InstanceSetting.key == "test_timeout"
+                            )
+                        )
+                        updated_setting = result.scalar_one()
+                        assert updated_setting.value == "600"
+                        assert updated_setting.updated_by == "admin"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_settings_update_boolean_checked():
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with TestSessionLocal() as session:
+            setting = InstanceSetting(
+                key="test_enabled",
+                value="false",
+                category="Server",
+                label="Test Enabled",
+                value_type="boolean",
+            )
+            session.add(setting)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+        from mcp_anywhere.web.settings_routes import settings_update
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        mock_request = MagicMock()
+        mock_request.session = {}
+        mock_request.form = AsyncMock(return_value={"setting_test_enabled": "on"})
+
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "admin"
+        mock_user.is_admin = True
+        mock_user.is_authenticated = True
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            with patch(
+                "mcp_anywhere.web.user_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                with patch(
+                    "mcp_anywhere.web.settings_routes.get_current_user",
+                    return_value=mock_user,
+                ):
+                    with patch(
+                        "mcp_anywhere.web.settings_routes.DEFAULT_SETTINGS",
+                        [
+                            {
+                                "key": "test_enabled",
+                                "value": "false",
+                                "category": "Server",
+                                "label": "Test Enabled",
+                                "value_type": "boolean",
+                            }
+                        ],
+                    ):
+                        response = await settings_update(mock_request)
+
+                        async with TestSessionLocal() as session:
+                            from sqlalchemy import select
+
+                            result = await session.execute(
+                                select(InstanceSetting).where(
+                                    InstanceSetting.key == "test_enabled"
+                                )
+                            )
+                            updated_setting = result.scalar_one()
+                            assert updated_setting.value == "true"
+                            assert updated_setting.updated_by == "admin"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_settings_update_boolean_unchecked():
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with TestSessionLocal() as session:
+            setting = InstanceSetting(
+                key="test_enabled",
+                value="true",
+                category="Server",
+                label="Test Enabled",
+                value_type="boolean",
+            )
+            session.add(setting)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+        from mcp_anywhere.web.settings_routes import settings_update
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        mock_request = MagicMock()
+        mock_request.session = {}
+        mock_request.form = AsyncMock(return_value={})
+
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "admin"
+        mock_user.is_admin = True
+        mock_user.is_authenticated = True
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            with patch(
+                "mcp_anywhere.web.user_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                with patch(
+                    "mcp_anywhere.web.settings_routes.get_current_user",
+                    return_value=mock_user,
+                ):
+                    with patch(
+                        "mcp_anywhere.web.settings_routes.DEFAULT_SETTINGS",
+                        [
+                            {
+                                "key": "test_enabled",
+                                "value": "true",
+                                "category": "Server",
+                                "label": "Test Enabled",
+                                "value_type": "boolean",
+                            }
+                        ],
+                    ):
+                        response = await settings_update(mock_request)
+
+                        async with TestSessionLocal() as session:
+                            from sqlalchemy import select
+
+                            result = await session.execute(
+                                select(InstanceSetting).where(
+                                    InstanceSetting.key == "test_enabled"
+                                )
+                            )
+                            updated_setting = result.scalar_one()
+                            assert updated_setting.value == "false"
+                            assert updated_setting.updated_by == "admin"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_settings_update_multiple_settings():
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with TestSessionLocal() as session:
+            settings = [
+                InstanceSetting(
+                    key="setting1",
+                    value="value1",
+                    category="Test",
+                    label="Setting 1",
+                    value_type="string",
+                ),
+                InstanceSetting(
+                    key="setting2",
+                    value="100",
+                    category="Test",
+                    label="Setting 2",
+                    value_type="integer",
+                ),
+                InstanceSetting(
+                    key="setting3",
+                    value="false",
+                    category="Test",
+                    label="Setting 3",
+                    value_type="boolean",
+                ),
+            ]
+            session.add_all(settings)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+        from mcp_anywhere.web.settings_routes import settings_update
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        mock_request = MagicMock()
+        mock_request.session = {}
+        mock_request.form = AsyncMock(
+            return_value={
+                "setting_setting1": "new_value",
+                "setting_setting2": "200",
+                "setting_setting3": "on",
+            }
+        )
+
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "admin"
+        mock_user.is_admin = True
+        mock_user.is_authenticated = True
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            with patch(
+                "mcp_anywhere.web.user_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                with patch(
+                    "mcp_anywhere.web.settings_routes.get_current_user",
+                    return_value=mock_user,
+                ):
+                    with patch(
+                        "mcp_anywhere.web.settings_routes.DEFAULT_SETTINGS",
+                        [
+                            {
+                                "key": "setting3",
+                                "value": "false",
+                                "category": "Test",
+                                "label": "Setting 3",
+                                "value_type": "boolean",
+                            }
+                        ],
+                    ):
+                        response = await settings_update(mock_request)
+
+                        async with TestSessionLocal() as session:
+                            from sqlalchemy import select
+
+                            result = await session.execute(
+                                select(InstanceSetting).order_by(InstanceSetting.key)
+                            )
+                            updated_settings = result.scalars().all()
+
+                            assert updated_settings[0].value == "new_value"
+                            assert updated_settings[0].updated_by == "admin"
+
+                            assert updated_settings[1].value == "200"
+                            assert updated_settings[1].updated_by == "admin"
+
+                            assert updated_settings[2].value == "true"
+                            assert updated_settings[2].updated_by == "admin"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_settings_update_no_changes():
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_db:
+        db_path = tmp_db.name
+
+    try:
+        test_engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
+        TestSessionLocal = sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
+
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with TestSessionLocal() as session:
+            setting = InstanceSetting(
+                key="test_host",
+                value="localhost",
+                category="Server",
+                label="Test Host",
+                value_type="string",
+                updated_by="previous_admin",
+            )
+            session.add(setting)
+            await session.commit()
+
+        from contextlib import asynccontextmanager
+        from mcp_anywhere.web.settings_routes import settings_update
+
+        @asynccontextmanager
+        async def mock_session_context():
+            async with TestSessionLocal() as session:
+                yield session
+
+        mock_request = MagicMock()
+        mock_request.session = {}
+        mock_request.form = AsyncMock(return_value={"setting_test_host": "localhost"})
+
+        mock_user = MagicMock(spec=User)
+        mock_user.username = "admin"
+        mock_user.is_admin = True
+        mock_user.is_authenticated = True
+
+        with patch(
+            "mcp_anywhere.web.settings_routes.get_async_session",
+            side_effect=mock_session_context,
+        ):
+            with patch(
+                "mcp_anywhere.web.user_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                with patch(
+                    "mcp_anywhere.web.settings_routes.get_current_user",
+                    return_value=mock_user,
+                ):
+                    response = await settings_update(mock_request)
+
+                    async with TestSessionLocal() as session:
+                        from sqlalchemy import select
+
+                        result = await session.execute(
+                            select(InstanceSetting).where(
+                                InstanceSetting.key == "test_host"
+                            )
+                        )
+                        setting_check = result.scalar_one()
+                        assert setting_check.value == "localhost"
+                        assert setting_check.updated_by == "previous_admin"
+
+        await test_engine.dispose()
+
+    finally:
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+
+
+@pytest.mark.asyncio
+async def test_settings_update_requires_admin():
+
+    mock_request = MagicMock()
+    mock_request.session = {}
+
+    mock_user = MagicMock(spec=User)
+    mock_user.username = "user"
+    mock_user.is_admin = False
+    mock_user.is_authenticated = True
+
+    from mcp_anywhere.web.settings_routes import settings_update
+
+    with patch(
+        "mcp_anywhere.web.user_routes.get_current_user",
+        return_value=mock_user,
+    ):
+        with patch(
+            "mcp_anywhere.web.user_routes.templates.TemplateResponse"
+        ) as mock_template:
+            mock_template.return_value = MagicMock()
+
+            response = await settings_update(mock_request)
+
+            assert mock_template.called
+            call_args = mock_template.call_args
+            assert call_args[0][1] == "403.html"
+            assert call_args[1]["status_code"] == 403
+
+
+@pytest.mark.asyncio
+async def test_settings_update_database_error():
+
+    from contextlib import asynccontextmanager
+    from mcp_anywhere.web.settings_routes import settings_update
+
+    def mock_session_error():
+        @asynccontextmanager
+        async def _error_context():
+            raise Exception("Database connection failed")
+        return _error_context()
+
+    mock_request = MagicMock()
+    mock_request.session = {}
+    mock_request.form = AsyncMock(return_value={"setting_test": "value"})
+
+    mock_user = MagicMock(spec=User)
+    mock_user.username = "admin"
+    mock_user.is_admin = True
+    mock_user.is_authenticated = True
+
+    with patch(
+        "mcp_anywhere.web.settings_routes.get_async_session",
+        side_effect=mock_session_error,
+    ):
+        with patch(
+            "mcp_anywhere.web.user_routes.get_current_user",
+            return_value=mock_user,
+        ):
+            with patch(
+                "mcp_anywhere.web.settings_routes.get_current_user",
+                return_value=mock_user,
+            ):
+                response = await settings_update(mock_request)
+
+                from starlette.responses import RedirectResponse
+                from urllib.parse import unquote
+
+                assert isinstance(response, RedirectResponse)
+                location = response.headers["location"]
+                assert "/admin/settings?error=" in location
+
+                decoded_location = unquote(location)
+                assert "Failed to update settings" in decoded_location
