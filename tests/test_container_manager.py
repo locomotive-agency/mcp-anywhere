@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, patch
 from docker.errors import APIError, ImageNotFound, NotFound
 
 from mcp_anywhere.container.manager import ContainerManager
