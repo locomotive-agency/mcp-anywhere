@@ -135,7 +135,7 @@ async def test_permission_isolation_between_users(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_delete_tool_with_many_user_permissions(db_session: AsyncSession):
-
+    """Ensure deleting a tool cascades to its user permissions but does not delete users."""
     users = []
     for i in range(50):
         user = User(username=f"user_{i}", role="user")
