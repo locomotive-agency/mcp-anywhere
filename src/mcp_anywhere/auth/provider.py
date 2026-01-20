@@ -724,7 +724,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def user_has_domain_authorization(self, email: str) -> bool:
 
-        logger.debug(f"Checking if {email} in domain {Config.OAUTH_USER_ALLOWED_DOMAIN}")
+        logger.debug(f"Checking if {email} matches allowed domain restriction")
 
         allowed_domain = await get_setting("oauth_user_allowed_domain")
 
