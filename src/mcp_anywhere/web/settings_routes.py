@@ -103,11 +103,19 @@ async def settings_view(request: Request) -> HTMLResponse:
                         "options", []
                     )
 
-            context = get_template_context(
-                request,
-                settings_by_category=settings_by_category,
-                settings_options=settings_options,
-            )
+            # Extract success/error messages from query params
+            context_kwargs = {
+                "settings_by_category": settings_by_category,
+                "settings_options": settings_options,
+            }
+
+            if "success" in request.query_params:
+                context_kwargs["success"] = request.query_params["success"]
+
+            if "error" in request.query_params:
+                context_kwargs["error"] = request.query_params["error"]
+
+            context = get_template_context(request, **context_kwargs)
             return templates.TemplateResponse(request, "settings/view.html", context)
 
     except Exception as e:

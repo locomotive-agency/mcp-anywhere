@@ -18,7 +18,9 @@ class InstanceSetting(Base):
         String(20), nullable=False, default="string"
     )  # string, integer, boolean, select
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, onupdate=datetime.now(timezone.utc)
+        DateTime,
+        nullable=False,
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     updated_by: Mapped[str | None] = mapped_column(String(100))
 
