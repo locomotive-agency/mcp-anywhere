@@ -325,7 +325,7 @@ async def test_query_permissions_for_nonexistent_user(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_permission_for_disabled_tool(db_session: AsyncSession):
-
+    """Ensure disabling a tool does not remove or alter existing permissions and they remain queryable."""
     user = User(username="testuser", role="user")
     user.set_password("testpass")
     db_session.add(user)
