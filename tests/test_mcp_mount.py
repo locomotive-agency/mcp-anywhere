@@ -41,7 +41,7 @@ async def test_first_request_starts_lifespan():
 
 
 @pytest.mark.asyncio
-async def test_multiple_requests_dont_restart_lifespan():
+async def test_multiple_requests_do_not_restart_lifespan():
 
     mock_app = AsyncMock()
     wrapper = FastMCPLifespanWrapper(mock_app)
