@@ -187,7 +187,7 @@ async def test_delete_tool_with_many_user_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_cannot_create_duplicate_permissions(db_session: AsyncSession):
-
+    """Ensure duplicate UserToolPermission entries for the same user and tool are rejected and the original permission is preserved."""
     user = User(username="testuser", role="user")
     user.set_password("testpass")
     db_session.add(user)
