@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -18,7 +18,7 @@ class InstanceSetting(Base):
         String(20), nullable=False, default="string"
     )  # string, integer, boolean, select
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, nullable=False, onupdate=datetime.now(timezone.utc)
     )
     updated_by: Mapped[str | None] = mapped_column(String(100))
 
