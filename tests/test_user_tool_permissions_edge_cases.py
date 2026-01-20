@@ -76,7 +76,7 @@ async def test_delete_user_with_many_permissions(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_permission_isolation_between_users(db_session: AsyncSession):
-
+    """Ensure that updating one user's permission does not affect another user's permission on the same tool."""
     user1 = User(username="user1", role="user")
     user1.set_password("pass1")
     user2 = User(username="user2", role="user")
