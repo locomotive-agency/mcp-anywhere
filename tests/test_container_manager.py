@@ -380,10 +380,10 @@ class TestImageManagement:
         mock_docker_client.images.get.side_effect = ImageNotFound("Not found")
         mock_docker_client.images.pull.side_effect = APIError("Pull failed")
 
-        try:
+        with pytest.raises(APIError, match="Pull failed"):
             container_manager._ensure_image_exists("test-image:latest")
-        except APIError:
-            pass
+
+        mock_docker_client.images.pull.assert_called_once_with("test-image:latest")
 
 
 class TestReusedContainers:
