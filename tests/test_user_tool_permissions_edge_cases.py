@@ -445,7 +445,7 @@ async def test_permissions_after_server_deletion(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_user_with_no_permissions(db_session: AsyncSession):
-
+    """Ensure a user with no permissions returns empty results for all permission and tool queries."""
     user = User(username="newuser", role="user")
     user.set_password("testpass")
     db_session.add(user)
