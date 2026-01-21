@@ -8,7 +8,7 @@ from mcp_anywhere.claude_analyzer import AsyncClaudeAnalyzer
 @pytest.mark.asyncio
 async def test_node_js_runtime_detection():
     """Test that Node.js servers are properly detected with npx runtime."""
-    analyzer = AsyncClaudeAnalyzer()
+    analyzer = AsyncClaudeAnalyzer(api_key="test-api-key")
 
     # Mock Claude response for Node.js server
     mock_response = """
@@ -41,7 +41,7 @@ ENV_VARS:
 @pytest.mark.asyncio
 async def test_python_runtime_detection():
     """Test that Python servers are properly detected with uvx runtime."""
-    analyzer = AsyncClaudeAnalyzer()
+    analyzer = AsyncClaudeAnalyzer(api_key="test-api-key")
 
     # Mock Claude response for Python server
     mock_response = """
@@ -66,7 +66,7 @@ ENV_VARS:
 
 def test_runtime_type_mapping():
     """Test that runtime types are properly mapped for template compatibility."""
-    analyzer = AsyncClaudeAnalyzer()
+    analyzer = AsyncClaudeAnalyzer(api_key="test-api-key")
 
     # Test npx -> npx (keep as is for container manager)
     response_npx = "RUNTIME: npx\nINSTALL: npm install -g @test/mcp\nSTART: npx @test/mcp\nNAME: test\nDESCRIPTION: test"
@@ -83,7 +83,7 @@ def test_runtime_type_mapping():
 
 def test_env_variables_parsing_edge_cases():
     """Test environment variable parsing with various formats."""
-    analyzer = AsyncClaudeAnalyzer()
+    analyzer = AsyncClaudeAnalyzer(api_key="test-api-key")
 
     # Test with missing parts
     response = """
