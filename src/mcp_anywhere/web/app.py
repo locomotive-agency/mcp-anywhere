@@ -26,6 +26,7 @@ from mcp_anywhere.web.middleware import (
     SessionAuthMiddleware,
 )
 from mcp_anywhere.web.secret_routes import secret_file_routes
+from mcp_anywhere.web.settings_routes import settings_routes, initialize_default_settings
 from mcp_anywhere.web.user_routes import routes as user_routes
 
 logger = get_logger(__name__)
@@ -50,6 +51,14 @@ async def create_app(transport_mode: str = "http") -> Starlette:
         )
     except Exception as e:
         logger.exception(f"Failed to initialize OAuth data: {e}")
+        raise
+
+    # Initialize default settings
+    try:
+        await initialize_default_settings()
+        logger.info("Default settings initialized")
+    except Exception as e:
+        logger.exception(f"Failed to initialize default settings: {e}")
         raise
 
     # Create the MCP router (like old create_mcp_manager)
@@ -120,6 +129,7 @@ You can use tools/list to see all available tools from all mounted servers.
         [
             *config_routes,
             *secret_file_routes,
+            *settings_routes,
             *user_routes,
             *routes.routes,
             # Static files mount
