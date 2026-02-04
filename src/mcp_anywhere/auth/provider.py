@@ -704,11 +704,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """
         return self.token_users.get(token)
 
-    async def get_user_profile(self, access_token: str) -> dict[str, Any]:
+    async def get_user_profile(self, g_token: str) -> dict[str, Any]:
 
         logger.debug("Fetching Google profile")
-
-        g_token = self.get_google_token_for_token(access_token)
 
         http_response = await create_mcp_http_client().get(
             Config.GOOGLE_OAUTH_USERINFO_URL,
