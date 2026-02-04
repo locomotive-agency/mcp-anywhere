@@ -43,6 +43,9 @@
                     <a href="/admin/users" class="text-gray-600 hover:text-gray-900 font-medium transition-colors">
                         Users
                     </a>
+                    <a href="/admin/settings" class="text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                        Settings
+                    </a>
                     {% endif %}
                     <a href="/servers/add" class="btn-primary inline-flex items-center px-4 py-2 rounded-lg transition-colors shadow-md hover:shadow-lg">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,6 +91,9 @@
                     {% if current_user is defined and current_user.is_admin %}
                     <a href="/admin/users" class="block text-gray-600 hover:text-gray-900 font-medium transition-colors">
                         Users
+                    </a>
+                    <a href="/admin/settings" class="block text-gray-600 hover:text-gray-900 font-medium transition-colors">
+                        Settings
                     </a>
                     {% endif %}
                     {% if current_user is defined and current_user.is_authenticated %}

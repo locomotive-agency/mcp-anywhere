@@ -73,6 +73,13 @@ fly deploy
 # Application available at https://your-app.fly.dev
 ```
 
+To speed up the fly.io deployment, you can configure manual build and start of containers.
+
+```bash
+# set the environment variable
+REBUILD_CONTAINERS_ON_STARTUP=false
+```
+
 ### Docker
 
 Deploying the application as a docker container using docker compose.

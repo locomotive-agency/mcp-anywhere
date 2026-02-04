@@ -64,8 +64,17 @@ async def test_tool_filter_middleware_filters_disabled_tools():
 
     middleware = ToolFilterMiddleware()
 
-    # Mock context and call_next
+    # Mock context with proper nested structure
+    mock_user = {"id": "test-user-id", "username": "testuser"}
+    mock_request = Mock()
+    mock_request.state.user = mock_user
+
+    mock_fastmcp_context = Mock()
+    mock_fastmcp_context.get_http_request.return_value = mock_request
+
     mock_context = Mock()
+    mock_context.fastmcp_context = mock_fastmcp_context
+
     mock_call_next = AsyncMock(return_value=tools)
 
     with patch.object(
@@ -73,12 +82,17 @@ async def test_tool_filter_middleware_filters_disabled_tools():
         "_get_disabled_tools_async",
         new=AsyncMock(return_value={"disabled_tool"}),
     ):
-        filtered = await middleware.on_list_tools(mock_context, mock_call_next)
-        tool_names = {
-            t["name"] if isinstance(t, dict) else getattr(t, "name", "") for t in filtered
-        }
-        assert "disabled_tool" not in tool_names
-        mock_call_next.assert_called_once_with(mock_context)
+        with patch.object(
+            ToolFilterMiddleware,
+            "_get_denied_tools_async",
+            new=AsyncMock(return_value=set()),  # No denied tools for this user
+        ):
+            filtered = await middleware.on_list_tools(mock_context, mock_call_next)
+            tool_names = {
+                t["name"] if isinstance(t, dict) else getattr(t, "name", "") for t in filtered
+            }
+            assert "disabled_tool" not in tool_names
+            mock_call_next.assert_called_once_with(mock_context)
 
 
 @pytest.mark.asyncio
