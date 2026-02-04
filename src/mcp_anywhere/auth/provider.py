@@ -708,7 +708,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         logger.debug("Fetching Google profile")
 
-        if self.google_cache[access_token]:
+        if access_token in self.google_cache:
             return self.google_cache[access_token]
 
         g_token = self.get_google_token_for_token(access_token)
