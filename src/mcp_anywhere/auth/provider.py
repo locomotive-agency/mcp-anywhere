@@ -412,7 +412,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.auth_codes: dict[str, AuthorizationCode] = {}
         self.tokens: dict[str, AccessToken] = {}
         self.state_mapping: dict[str, dict[str, str]] = {}
-        self.token_mapping: dict[str, str] = {}
+        self.g_token_mapping: dict[str, str] = {}
         self.state_resource_tokens: dict[str] = {}
         # Map access tokens to user IDs for user-specific filtering
         self.token_users: dict[str, str] = {}
@@ -606,7 +606,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
         if google_token:
-            self.token_mapping[mcp_token] = google_token
+            self.g_token_mapping[mcp_token] = google_token
 
         # Look up user email from authorization code and store user_id mapping
         email = self.code_emails.get(authorization_code.code)
@@ -747,7 +747,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         return False
 
     async def get_google_token_for_token(self, token: str) -> str:
-        return self.token_mapping[token]
+        return self.g_token_mapping[token]
 
     async def resource_token_from_state(self, state: str) -> str:
         logger.debug(f"Fetching resource token from state {state}")
