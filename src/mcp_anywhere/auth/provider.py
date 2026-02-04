@@ -706,6 +706,10 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
     async def get_user_profile(self, g_token: str) -> dict[str, Any]:
 
+        if g_token in self.google_cache:
+            logger.debug("Google profile from cache")
+            return self.google_cache[g_token]
+
         logger.debug("Fetching Google profile")
 
         http_response = await create_mcp_http_client().get(
@@ -721,6 +725,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             )
 
         logger.debug(f"google user {http_response.json()["email"]}")
+
+        self.google_cache[g_token] = http_response.json()
 
         return http_response.json()
 
