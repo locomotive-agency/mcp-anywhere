@@ -418,7 +418,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.token_users: dict[str, str] = {}
         # Map authorization codes to user emails for user lookup
         self.code_emails: dict[str, str] = {}
-        self.google_cache: dict[str, Any] = {}
+        self.google_cache: dict[str, dict[str, Any]] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         """Get OAuth client information."""
@@ -708,9 +708,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         logger.debug("Fetching Google profile")
 
-        if access_token in self.google_cache:
-            return self.google_cache[access_token]
-
         g_token = self.get_google_token_for_token(access_token)
 
         http_response = await create_mcp_http_client().get(
@@ -726,8 +723,6 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             )
 
         logger.debug(f"google user {http_response.json()["email"]}")
-
-        self.google_cache[access_token] = http_response.json()
 
         return http_response.json()
 
