@@ -738,6 +738,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         return False
 
+    def get_google_token_for_token(self, token: str) -> str:
+        return self.token_mapping[token]
+
     async def resource_token_from_state(self, state: str) -> str:
         logger.debug(f"Fetching resource token from state {state}")
         return self.state_resource_tokens[state]

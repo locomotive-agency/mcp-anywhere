@@ -163,8 +163,8 @@ class MCPAuthMiddleware(BaseHTTPMiddleware):
 
         # For Google OAuth, check that user is part of allowed domains
         if isinstance(oauth_provider, GoogleOAuthProvider):
-            logger.debug("Fetching Google user details")
-            google_user = await oauth_provider.get_user_profile(access_token.token)
+            g_token = oauth_provider.get_google_token_for_token(token)
+            google_user = await oauth_provider.get_user_profile(g_token)
 
             email = google_user["email"]
 
