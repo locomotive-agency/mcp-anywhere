@@ -412,12 +412,13 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.auth_codes: dict[str, AuthorizationCode] = {}
         self.tokens: dict[str, AccessToken] = {}
         self.state_mapping: dict[str, dict[str, str]] = {}
-        self.token_mapping: dict[str, str] = {}
+        self.g_token_mapping: dict[str, str] = {}
         self.state_resource_tokens: dict[str] = {}
         # Map access tokens to user IDs for user-specific filtering
         self.token_users: dict[str, str] = {}
         # Map authorization codes to user emails for user lookup
         self.code_emails: dict[str, str] = {}
+        self.google_cache: dict[str, dict[str, Any]] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         """Get OAuth client information."""
@@ -605,7 +606,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
         if google_token:
-            self.token_mapping[mcp_token] = google_token
+            self.g_token_mapping[mcp_token] = google_token
 
         # Look up user email from authorization code and store user_id mapping
         email = self.code_emails.get(authorization_code.code)
@@ -703,22 +704,29 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         """
         return self.token_users.get(token)
 
-    async def get_user_profile(self, access_token: str) -> dict[str, Any]:
+    async def get_user_profile(self, g_token: str) -> dict[str, Any]:
 
-        logger.debug("Fetching google user profile")
+        if g_token in self.google_cache:
+            logger.debug("Google profile from cache")
+            return self.google_cache[g_token]
+
+        logger.debug("Fetching Google profile")
 
         http_response = await create_mcp_http_client().get(
             Config.GOOGLE_OAUTH_USERINFO_URL,
-            headers={"Authorization": f"Bearer {access_token}"}
+            headers={"Authorization": f"Bearer {g_token}"}
         )
 
         if http_response.status_code != 200:
+            logger.error(f"Google API error: {http_response.text}")
             raise HTTPException(
                 status_code=http_response.status_code,
                 detail="Failed to fetch Google OAuth user profile"
             )
 
         logger.debug(f"google user {http_response.json()["email"]}")
+
+        self.google_cache[g_token] = http_response.json()
 
         return http_response.json()
 
@@ -737,6 +745,9 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             return True
 
         return False
+
+    async def get_google_token_for_token(self, token: str) -> str:
+        return self.g_token_mapping[token]
 
     async def resource_token_from_state(self, state: str) -> str:
         logger.debug(f"Fetching resource token from state {state}")
