@@ -3,18 +3,18 @@
 {% block title %}Edit Server - MCP Anywhere{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
+<div>
     <h2 class="text-2xl font-bold mb-6">Edit MCP Server</h2>
     
     {% if error %}
-        <div class="mb-4 p-4 rounded-md bg-red-100 text-red-700">
+        <div class="mb-4 p-4 rounded-md" style="background-color: #FEF2F2; color: #B91C1C;">
             <p class="font-medium">Error:</p>
             <p class="text-sm mt-1">{{ error }}</p>
         </div>
     {% endif %}
     
     <form method="POST" class="space-y-6">
-        <div class="bg-white p-6 rounded-lg shadow">
+        <div class="ds-card">
             <h3 class="text-lg font-medium mb-4">Server Configuration</h3>
             
             <div class="grid grid-cols-1 gap-4">
@@ -24,7 +24,7 @@
                            id="name"
                            name="name" 
                            value="{{ server.name }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           class="ds-input w-full" 
                            placeholder="my-mcp-server"
                            required>
                     <p class="text-xs text-gray-500 mt-1">Unique name for this server</p>
@@ -39,7 +39,7 @@
                            id="github_url"
                            name="github_url" 
                            value="{{ server.github_url }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           class="ds-input w-full" 
                            placeholder="https://github.com/owner/repo" 
                            required>
                     <p class="text-xs text-gray-500 mt-1">URL to the GitHub repository</p>
@@ -53,7 +53,7 @@
                     <textarea id="description"
                               name="description" 
                               rows="2"
-                              class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              class="ds-input w-full"
                               placeholder="Brief description of what this server does...">{{ server.description or '' }}</textarea>
                     {% if errors and errors.description %}
                         <p class="text-red-600 text-sm mt-1">{{ errors.description[0] }}</p>
@@ -64,7 +64,7 @@
                     <label for="runtime_type" class="block text-sm font-medium mb-2">Runtime</label>
                     <select id="runtime_type"
                             name="runtime_type" 
-                            class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            class="ds-input w-full"
                             required>
                         <option value="npx" {% if server.runtime_type == 'npx' %}selected{% endif %}>
                             Node.js (npx)
@@ -87,7 +87,7 @@
                            id="install_command"
                            name="install_command"
                            value="{{ server.install_command or '' }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           class="ds-input w-full"
                            placeholder="npm install or pip install -e ."
                            required>
                     <p class="text-xs text-gray-500 mt-1">Command to install the server package dependencies</p>
@@ -102,7 +102,7 @@
                            id="start_command"
                            name="start_command" 
                            value="{{ server.start_command }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           class="ds-input w-full" 
                            placeholder="npx mcp-server or python -m mcp_server"
                            required>
                     <p class="text-xs text-gray-500 mt-1">Command to start the MCP server</p>
@@ -122,13 +122,13 @@
                             <input type="text" 
                                    name="env_key_{{ loop.index0 }}" 
                                    value="{{ env.key }}"
-                                   class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0">
+                                   class="ds-input flex-1 min-w-0">
                             <div class="flex gap-2 flex-1">
                                 <input type="text" 
                                        name="env_value_{{ loop.index0 }}" 
                                        value="{{ env.value or '' }}"
                                        placeholder="{% if env.required %}(required) {% endif %}{{ env.description or 'value' }}"
-                                       class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500{% if env.required %} border-orange-300{% endif %} min-w-0">
+                                       class="ds-input flex-1 min-w-0"{% if env.required %} style="border-color: var(--color-warning-500);"{% endif %}>
                                 <button type="button" 
                                         onclick="removeEnvVar(this)"
                                         class="px-3 py-2 text-red-600 hover:text-red-800 flex-shrink-0">
@@ -144,12 +144,12 @@
                             <input type="text" 
                                    name="env_key_0" 
                                    placeholder="VARIABLE_NAME"
-                                   class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0">
+                                   class="ds-input flex-1 min-w-0">
                             <div class="flex gap-2 flex-1">
                                 <input type="text" 
                                        name="env_value_0" 
                                        placeholder="value"
-                                       class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0">
+                                       class="ds-input flex-1 min-w-0">
                                 <button type="button" 
                                         onclick="removeEnvVar(this)"
                                         class="px-3 py-2 text-red-600 hover:text-red-800 flex-shrink-0">
@@ -163,15 +163,15 @@
                 </div>
                 <button type="button" 
                         onclick="addEnvVar()"
-                        class="text-blue-600 hover:text-blue-800 text-sm">
+                        class="link-brand text-sm" style="color: var(--brand-primary);">
                     + Add Environment Variable
                 </button>
-                <p class="text-xs text-gray-500 mt-1">Environment variables required by the server</p>
+                <p class="text-xs mt-1" style="color: var(--text-muted);">Environment variables required by the server</p>
             </div>
             
             <div class="mt-6 flex justify-end space-x-3">
                 <a href="/servers/{{ server.id }}" 
-                   class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                   class="btn-neutral px-4 py-2">
                     Cancel
                 </a>
                 <button type="submit" 
@@ -179,7 +179,7 @@
                         hx-post="/servers/{{ server.id }}/edit"
                         hx-target="body"
                         hx-indicator="#update-btn .htmx-indicator"
-                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center">
+                        class="btn-primary px-4 py-2 flex items-center">
                     <svg id="update-icon" class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
@@ -205,12 +205,12 @@ function addEnvVar() {
         <input type="text" 
                name="env_key_${envVarCounter}" 
                placeholder="VARIABLE_NAME"
-               class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0">
+               class="ds-input flex-1 min-w-0">
         <div class="flex gap-2 flex-1">
             <input type="text" 
                    name="env_value_${envVarCounter}" 
                    placeholder="value"
-                   class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0">
+                   class="ds-input flex-1 min-w-0">
             <button type="button" 
                     onclick="removeEnvVar(this)"
                     class="px-3 py-2 text-red-600 hover:text-red-800 flex-shrink-0">

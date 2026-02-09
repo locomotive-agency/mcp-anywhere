@@ -3,25 +3,33 @@
 {% block title %}Add New Server - MCP Anywhere{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <h2 class="text-2xl font-bold mb-6">Add MCP Server</h2>
-    
+<div>
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold" style="color: var(--text-primary);">Add MCP Server</h1>
+                <p class="mt-2" style="color: var(--text-secondary);">Analyze a GitHub repository and add a new MCP server</p>
+            </div>
+        </div>
+    </div>
+
     {% if error %}
-        <div class="mb-4 p-4 rounded-md bg-red-100 text-red-700">
+        <div class="mb-4 p-4 rounded-md" style="background-color: #FEF2F2; color: #B91C1C;">
             <p class="font-medium">Error analyzing repository:</p>
             <p class="text-sm mt-1">{{ error }}</p>
         </div>
     {% endif %}
     
     {% if warning %}
-        <div class="mb-4 p-4 rounded-md bg-yellow-100 text-yellow-700">
+        <div class="mb-4 p-4 rounded-md" style="background-color: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;">
             <p class="font-medium">Warning:</p>
             <p class="text-sm mt-1">{{ warning }}</p>
         </div>
     {% endif %}
     
     {% if analysis %}
-        <div class="mb-4 p-4 rounded-md bg-green-100 text-green-700">
+        <div class="mb-4 p-4 rounded-md" style="background-color: var(--color-brand-50); color: var(--color-brand-800);">
             <p class="font-medium">Repository Analysis Complete!</p>
             <p class="text-sm mt-1">Found: {{ analysis.description or "No description available" }}</p>
             <p class="text-sm">Recommended runtime: {{ analysis.runtime_type or "Not detected" }}</p>
@@ -30,8 +38,8 @@
     
     <form method="POST" action="/servers/add" class="space-y-6">
         <!-- Step 1: GitHub URL Analysis -->
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-medium mb-4">Step 1: Analyze Repository</h3>
+        <div class="ds-card">
+            <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">Step 1: Analyze Repository</h3>
             <p class="text-sm text-gray-600 mb-4">
                 Enter a GitHub repository URL and we'll analyze it with Claude to extract the MCP server configuration.
             </p>
@@ -42,7 +50,7 @@
                        id="github_url"
                        name="github_url" 
                        value="{{ github_url or '' }}"
-                       class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                       class="ds-input w-full" 
                        placeholder="https://github.com/owner/repo" 
                        required>
                 <p class="text-xs text-gray-500 mt-1">URL to the GitHub repository containing the MCP server</p>
@@ -52,12 +60,12 @@
             </div>
             
             <!-- Patience Note -->
-            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div class="mb-4 p-3 rounded-md" style="background-color: #FEF3C7; border: 1px solid #FCD34D;">
                 <div class="flex items-center">
-                    <svg class="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5 mr-2" style="color: var(--color-warning-500);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                     </svg>
-                    <p class="text-sm text-yellow-700">
+                    <p class="text-sm" style="color: #92400E;">
                         <strong>Please be patient:</strong> Adding a new server may take several minutes as we analyze the repository, build the Docker image, and discover available tools.
                     </p>
                 </div>
@@ -70,7 +78,7 @@
                     hx-target="#analysis-results"
                     hx-include="[name='github_url']"
                     hx-indicator="#analyze-btn .htmx-indicator"
-                    class="btn-primary px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center" style="--tw-ring-color: var(--mint-dark);">
+                    class="btn-primary px-4 py-2 flex items-center">
                 <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
                 </svg>
@@ -88,8 +96,8 @@
         <div id="analysis-results">
             {% if analysis %}
             <!-- Step 2: Configuration Form -->
-            <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-medium mb-4">Step 2: Configure Server</h3>
+            <div class="ds-card">
+            <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">Step 2: Configure Server</h3>
             <p class="text-sm text-gray-600 mb-4">
                 Review and adjust the configuration extracted from the repository.
             </p>
@@ -101,7 +109,7 @@
                            id="name"
                            name="name" 
                            value="{{ analysis.name or '' }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           class="ds-input w-full" 
                            placeholder="my-mcp-server"
                            required>
                     <p class="text-xs text-gray-500 mt-1">Unique name for this server</p>
@@ -115,7 +123,7 @@
                     <textarea id="description"
                               name="description" 
                               rows="2"
-                              class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              class="ds-input w-full"
                               placeholder="Brief description of what this server does...">{{ analysis.description or '' }}</textarea>
                     {% if errors and errors.description %}
                         <p class="text-red-600 text-sm mt-1">{{ errors.description[0] }}</p>
@@ -126,7 +134,7 @@
                     <label for="runtime_type" class="block text-sm font-medium mb-2">Runtime</label>
                     <select id="runtime_type"
                             name="runtime_type" 
-                            class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            class="ds-input w-full"
                             required>
                         <option value="">Select runtime type...</option>
                         <option value="npx" {% if analysis.runtime_type == 'npx' %}selected{% endif %}>
@@ -150,7 +158,7 @@
                            id="install_command"
                            name="install_command"
                            value="{{ analysis.install_command or '' }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           class="ds-input w-full"
                            placeholder="npm install or pip install -e ."
                            required>
                     <p class="text-xs text-gray-500 mt-1">Command to install the server package dependencies</p>
@@ -165,7 +173,7 @@
                            id="start_command"
                            name="start_command" 
                            value="{{ analysis.start_command or '' }}"
-                           class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           class="ds-input w-full" 
                            placeholder="npx mcp-server or python -m mcp_server"
                            required>
                     <p class="text-xs text-gray-500 mt-1">Command to start the MCP server</p>
@@ -194,7 +202,7 @@
                             </div>
                             <input type="password" 
                                    name="env_value_{{ env.key }}"
-                                   class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                   class="ds-input w-full" 
                                    placeholder="Enter value">
                             <p class="text-xs text-gray-500">{{ env.description }}</p>
                             <input type="hidden" name="env_desc_{{ env.key }}" value="{{ env.description }}">
@@ -207,7 +215,7 @@
             
             <div class="mt-6 flex justify-end space-x-3">
                 <a href="/" 
-                   class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                   class="btn-neutral px-4 py-2">
                     Cancel
                 </a>
                 <button type="submit" 
@@ -248,8 +256,8 @@ function addEnvVar() {
     const div = document.createElement('div');
     div.className = 'flex gap-2 mb-2';
     div.innerHTML = `
-        <input type="text" name="env_key_${index}" placeholder="VARIABLE_NAME" class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        <input type="text" name="env_value_${index}" placeholder="value" class="flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        <input type="text" name="env_key_${index}" placeholder="VARIABLE_NAME" class="ds-input flex-1">
+        <input type="text" name="env_value_${index}" placeholder="value" class="ds-input flex-1">
         <button type="button" onclick="removeEnvVar(this)" class="px-3 py-2 text-red-600 hover:text-red-800">✕</button>
     `;
     container.appendChild(div);

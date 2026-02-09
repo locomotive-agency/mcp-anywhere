@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Server Error - MCP Anywhere</title>
+    <link rel="stylesheet" href="/static/app.css">
     <style>
-        body { font-family: sans-serif; margin: 20px; text-align: center; }
+        body { font-family: var(--font-sans); margin: 20px; text-align: center; background-color: var(--bg-surface); color: var(--text-primary); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
         .error-container { max-width: 600px; margin: 50px auto; }
-        .error-code { font-size: 72px; color: #dc3545; font-weight: bold; }
-        .error-message { font-size: 24px; margin: 20px 0; }
-        .btn { padding: 10px 20px; margin: 10px; text-decoration: none; border-radius: 4px; background-color: #007bff; color: white; display: inline-block; }
+        .error-code { font-size: 72px; font-weight: bold; color: var(--color-danger-500); }
+        .error-message { font-size: 24px; margin: 20px 0; color: var(--text-secondary); }
     </style>
 </head>
 <body>
     <div class="error-container">
         <div class="error-code">500</div>
         <div class="error-message">{{ message or "Internal server error" }}</div>
-        <a href="/" class="btn">Go Home</a>
+        <a href="/" class="btn-primary inline-flex items-center px-4 py-2">Go Home</a>
     </div>
 </body>
 </html>
