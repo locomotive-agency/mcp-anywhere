@@ -612,37 +612,40 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         user_profile = self.code_user_profiles.get(authorization_code.code)
         if user_profile:
             email = user_profile.get("email")
-            given_name = user_profile.get("given_name", email.split("@")[0] if email else "User")
-            
-            # Query database for existing user or create new one
-            session = await self.db_session_factory()
-            async with session:
-                from mcp_anywhere.auth.models import User
-                stmt = select(User).where(User.email == email)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
+            if not email:
+                logger.error("User profile missing email")
+                del self.code_user_profiles[authorization_code.code]
+            else:
+                given_name = user_profile.get("given_name", email.split("@")[0])
                 
-                # Create user if doesn't exist
-                if not user:
-                    logger.info(f"Creating new user for email: {email}")
-                    user = User(
-                        username=email,
-                        email=email,
-                        password_hash="",  # Google OAuth users don't need password
-                        type=Config.USER_GOOGLE,
-                        role=Config.USER_ROLE
-                    )
-                    session.add(user)
-                    await session.commit()
-                    await session.refresh(user)
-                    logger.info(f"Created new user with id: {user.id}")
+                # Query database for existing user or create new one
+                async with await self.db_session_factory() as session:
+                    from mcp_anywhere.auth.models import User
+                    stmt = select(User).where(User.email == email)
+                    result = await session.execute(stmt)
+                    user = result.scalar_one_or_none()
+                    
+                    # Create user if doesn't exist
+                    if not user:
+                        logger.info(f"Creating new user for email: {email}")
+                        user = User(
+                            username=email,
+                            email=email,
+                            password_hash="",  # Google OAuth users don't need password
+                            type=Config.USER_GOOGLE,
+                            role=Config.USER_ROLE
+                        )
+                        session.add(user)
+                        await session.commit()
+                        await session.refresh(user)
+                        logger.info(f"Created new user with id: {user.id}")
+                    
+                    # Map token to user_id
+                    self.token_users[mcp_token] = str(user.id)
+                    logger.debug(f"Mapped MCP token to user_id: {user.id}")
                 
-                # Map token to user_id
-                self.token_users[mcp_token] = str(user.id)
-                logger.debug(f"Mapped MCP token to user_id: {user.id}")
-            
-            # Clean up user profile mapping
-            del self.code_user_profiles[authorization_code.code]
+                # Clean up user profile mapping
+                del self.code_user_profiles[authorization_code.code]
 
         logger.debug(f"Providing authorization code to OAuth user: {mcp_token[:10]}...")
 
