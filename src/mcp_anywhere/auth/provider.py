@@ -416,8 +416,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.state_resource_tokens: dict[str] = {}
         # Map access tokens to user IDs for user-specific filtering
         self.token_users: dict[str, str] = {}
-        # Map authorization codes to user emails for user lookup
-        self.code_emails: dict[str, str] = {}
+        # Map authorization codes to user profiles for user lookup and creation
+        self.code_user_profiles: dict[str, dict[str, Any]] = {}
         self.google_cache: dict[str, dict[str, Any]] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
@@ -559,8 +559,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         self.auth_codes[new_code] = auth_code
 
-        # Store email mapping for user lookup during token exchange
-        self.code_emails[new_code] = user_profile["email"]
+        # Store user profile mapping for user lookup and creation during token exchange
+        self.code_user_profiles[new_code] = user_profile
 
         self.tokens[token] = AccessToken(
             token=token,
@@ -608,20 +608,42 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if google_token:
             self.g_token_mapping[mcp_token] = google_token
 
-        # Look up user email from authorization code and store user_id mapping
-        email = self.code_emails.get(authorization_code.code)
-        if email:
-            # Query database for user_id
-            async with self.db_session_factory() as session:
-                from mcp_anywhere.auth.models import User
-                stmt = select(User.id).where(User.email == email)
-                result = await session.execute(stmt)
-                user_id = result.scalar_one_or_none()
-                if user_id:
-                    self.token_users[mcp_token] = str(user_id)
-                    logger.debug(f"Mapped MCP token to user_id: {user_id}")
-            # Clean up email mapping
-            del self.code_emails[authorization_code.code]
+        # Look up user profile from authorization code
+        user_profile = self.code_user_profiles.get(authorization_code.code)
+        if user_profile:
+            email = user_profile.get("email")
+            if not email:
+                logger.error("User profile missing email")
+                del self.code_user_profiles[authorization_code.code]
+            else:
+                # Query database for existing user or create new one
+                async with self.db_session_factory() as session:
+                    from mcp_anywhere.auth.models import User
+                    stmt = select(User).where(User.email == email)
+                    result = await session.execute(stmt)
+                    user = result.scalar_one_or_none()
+                    
+                    # Create user if doesn't exist
+                    if not user:
+                        logger.info(f"Creating new user for email: {email}")
+                        user = User(
+                            username=email,
+                            email=email,
+                            password_hash="",  # Google OAuth users don't need password
+                            type=Config.USER_GOOGLE,
+                            role=Config.USER_ROLE
+                        )
+                        session.add(user)
+                        await session.commit()
+                        await session.refresh(user)
+                        logger.info(f"Created new user with id: {user.id}")
+                    
+                    # Map token to user_id
+                    self.token_users[mcp_token] = str(user.id)
+                    logger.debug(f"Mapped MCP token to user_id: {user.id}")
+                
+                # Clean up user profile mapping
+                del self.code_user_profiles[authorization_code.code]
 
         logger.debug(f"Providing authorization code to OAuth user: {mcp_token[:10]}...")
 
