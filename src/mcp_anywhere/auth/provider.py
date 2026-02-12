@@ -616,10 +616,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
                 logger.error("User profile missing email")
                 del self.code_user_profiles[authorization_code.code]
             else:
-                given_name = user_profile.get("given_name", email.split("@")[0])
-                
                 # Query database for existing user or create new one
-                async with await self.db_session_factory() as session:
+                async with self.db_session_factory() as session:
                     from mcp_anywhere.auth.models import User
                     stmt = select(User).where(User.email == email)
                     result = await session.execute(stmt)

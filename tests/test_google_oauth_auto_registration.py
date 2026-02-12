@@ -18,8 +18,8 @@ from mcp_anywhere.config import Config
 async def test_google_oauth_auto_registration_new_user(db_session):
     """Test that a new user is automatically created during token exchange."""
     
-    # Create a session factory that returns our test db_session
-    async def session_factory():
+    # Create a session factory that returns our test db_session (not a coroutine)
+    def session_factory():
         return db_session
     
     # Initialize provider
@@ -91,8 +91,8 @@ async def test_google_oauth_auto_registration_new_user(db_session):
 async def test_google_oauth_existing_user_not_duplicated(db_session):
     """Test that existing users are not duplicated during token exchange."""
     
-    # Create a session factory that returns our test db_session
-    async def session_factory():
+    # Create a session factory that returns our test db_session (not a coroutine)
+    def session_factory():
         return db_session
     
     # Initialize provider
@@ -165,8 +165,8 @@ async def test_google_oauth_existing_user_not_duplicated(db_session):
 async def test_code_user_profiles_renamed(db_session):
     """Test that code_user_profiles dictionary exists and works correctly."""
     
-    # Create a session factory that returns our test db_session
-    async def session_factory():
+    # Create a session factory that returns our test db_session (not a coroutine)
+    def session_factory():
         return db_session
     
     # Initialize provider
@@ -191,8 +191,8 @@ async def test_handle_callback_stores_full_profile(db_session):
     # This test verifies the change in handle_callback method
     # We'll test it indirectly by checking if the stored value is a dict with multiple fields
     
-    # Create a session factory that returns our test db_session
-    async def session_factory():
+    # Create a session factory that returns our test db_session (not a coroutine)
+    def session_factory():
         return db_session
     
     provider = GoogleOAuthProvider(session_factory)
@@ -223,8 +223,8 @@ async def test_handle_callback_stores_full_profile(db_session):
 async def test_user_creation_with_missing_given_name(db_session):
     """Test that user creation handles missing given_name gracefully."""
     
-    # Create a session factory that returns our test db_session
-    async def session_factory():
+    # Create a session factory that returns our test db_session (not a coroutine)
+    def session_factory():
         return db_session
     
     provider = GoogleOAuthProvider(session_factory)
