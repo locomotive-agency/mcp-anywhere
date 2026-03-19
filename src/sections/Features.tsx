@@ -8,18 +8,18 @@ export const Features: React.FC = () => {
   const features = [
     {
       icon: <Shield className="w-6 h-6 text-brand-600" />,
-      title: "End-to-End Encryption",
-      desc: "Your data is encrypted in transit. We never see your payloads or model context."
+      title: "Self-Hosted & Private",
+      desc: "Runs entirely on your own infrastructure. Your tool calls, API keys, and model context never leave your environment."
     },
     {
       icon: <Zap className="w-6 h-6 text-brand-600" />,
-      title: "Low Latency",
-      desc: "Global edge network ensures your tool calls are routed through the fastest path."
+      title: "Auto-Configuration",
+      desc: "Point MCP Anywhere at any GitHub repository and Claude AI automatically analyzes and configures the MCP server for you."
     },
     {
       icon: <Lock className="w-6 h-6 text-brand-600" />,
       title: "Access Control",
-      desc: "Manage API keys and permissions for each exposed server independently."
+      desc: "Manage API keys and permissions for each server independently."
     },
     {
       icon: <Globe className="w-6 h-6 text-brand-600" />,

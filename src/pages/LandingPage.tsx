@@ -1,6 +1,5 @@
 import React from 'react';
 import { Hero } from '../sections/Hero';
-import { SocialProof } from '../sections/SocialProof';
 import { HowItWorks } from '../sections/HowItWorks';
 import { Features } from '../sections/Features';
 import { Security } from '../sections/Security';
@@ -13,7 +12,7 @@ export const LandingPage: React.FC = () => {
   return (
     <>
       <Hero />
-      <SocialProof />
+      {/* <SocialProof /> */}
       <HowItWorks />
       <Features />
       <Security />

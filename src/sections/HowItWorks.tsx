@@ -8,7 +8,7 @@ export const HowItWorks: React.FC = () => {
     <Section className="py-24 bg-surface">
       <Container>
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="w-auto mx-auto px-3 py-1 mb-4 text-xs font-semibold tracking-wider text-brand-600 uppercase bg-brand-50 rounded-full">
+          <div className="inline-flex items-center border border-brand-500 px-3 py-1 mb-4 text-xs font-semibold tracking-wider text-black uppercase bg-brand-50 rounded-full">
             Workflow
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-neutral-900">

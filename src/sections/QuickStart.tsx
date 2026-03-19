@@ -16,48 +16,52 @@ export const QuickStart: React.FC = () => {
               Start building in seconds
             </h2>
             <p className="text-white text-lg mb-8 text-white">
-              Install the CLI and expose your first local server to the world (securely) with a single command.
+              Clone the repo, start the gateway, and have all your MCP servers available in Claude Desktop in minutes.
             </p>
-            
+
             <div className="space-y-6">
-              <div className="flex gap-4">
+              <div className="flex gap-4 mb-4">
                 <div className="w-8 h-8 rounded-full bg-brand-500 text-neutral-900 flex items-center justify-center font-bold">1</div>
                 <div>
-                  <h4 className="font-bold mb-1 text-neutral-400">Install the CLI</h4>
-                  <p className="text-neutral-400 text-sm">Available via npm for Mac, Linux, and Windows.</p>
+                  <h4 className="font-bold mb-1 text-neutral-400">Clone & Install</h4>
+                  <p className="text-neutral-400 text-sm">Python package installed with uv or pip. Requires Python 3.11+ and Docker Desktop.</p>
                 </div>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 mb-4">
                 <div className="w-8 h-8 rounded-full bg-neutral-700 text-white flex items-center justify-center font-bold">2</div>
                 <div>
-                  <h4 className="font-bold mb-1 text-neutral-400">Connect a Server</h4>
-                  <p className="text-neutral-400 text-sm">Point to your local MCP server implementation.</p>
+                  <h4 className="font-bold mb-1 text-neutral-400">Add MCP Servers</h4>
+                  <p className="text-neutral-400 text-sm">Open the web UI and paste any GitHub MCP repository URL. Claude AI auto-configures it.</p>
                 </div>
               </div>
               <div className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-neutral-700 text-white flex items-center justify-center font-bold">3</div>
                 <div>
-                  <h4 className="font-bold mb-1 text-neutral-400">Use Anywhere</h4>
-                  <p className="text-neutral-400 text-sm">Paste the SSE URL into your client configuration.</p>
+                  <h4 className="font-bold mb-1 text-neutral-400">Connect Claude Desktop</h4>
+                  <p className="text-neutral-400 text-sm">Add one entry to claude_desktop_config.json — all your MCP tools become available instantly.</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="flex-1 w-full max-w-xl">
-            <CodeBlock 
+            <CodeBlock
               language="bash"
-              code={`# Install globally
-npm install -g mcp-anywhere
+              code={`# Clone and install
+git clone https://github.com/locomotive-agency/mcp-anywhere.git
+cd mcp-anywhere && uv sync
 
-# Login to your account
-mcp-anywhere login
+# Start the gateway (includes web UI)
+mcp-anywhere serve http
 
-# Expose a local server (e.g. running on port 3000)
-mcp-anywhere connect http://localhost:3000 --name "My Local DB"
+# > Starting MCP Anywhere...
+# > Web UI available at http://localhost:8000
 
-# > Connection Established! 
-# > Public URL: https://mcp.run/s/xyz-123-abc`}
+# Add MCP servers via the web UI, then connect Claude Desktop
+mcp-anywhere connect
+
+# > Connected to MCP Anywhere
+# > 3 MCP servers · 12 tools available`}
             />
           </div>
         </div>

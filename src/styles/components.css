@@ -43,6 +43,7 @@
 
 .btn-primary:hover {
   background-color: var(--brand-hover);
+  color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }

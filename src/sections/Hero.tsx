@@ -61,7 +61,7 @@ export const Hero: React.FC = () => {
                 <Shield size={16} className="text-brand-500" /> Secure by Default
               </div>
               <div className="flex items-center gap-2">
-                <Globe size={16} className="text-brand-500" /> Global Edge
+                <Globe size={16} className="text-brand-500" /> Open Source
               </div>
             </div>
           </div>
@@ -83,28 +83,49 @@ export const Hero: React.FC = () => {
                 </div>
 
                 {/* Connection Visual */}
-                <div className="flex items-center justify-between gap-4 py-4">
-                  <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-center flex-1">
-                    <div className="w-10 h-10 mx-auto bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-2">
-                      <Zap size={20} />
-                    </div>
-                    <div className="font-semibold text-sm">Claude Desktop</div>
-                    <div className="text-xs text-neutral-400">Client</div>
+                <div className="flex items-center justify-between gap-3 py-2">
+                  {/* Left: Multiple MCP Servers */}
+                  <div className="flex flex-col gap-2 flex-1">
+                    {['Ahrefs MCP', 'GitHub MCP', 'Python MCP'].map((name, i) => (
+                      <div key={i} className="bg-neutral-50 px-3 py-2 rounded-lg border border-neutral-200 text-center">
+                        <div className="font-semibold text-xs text-neutral-700">{name}</div>
+                      </div>
+                    ))}
                   </div>
 
-                  <div className="flex-1 flex flex-col items-center">
-                    <div className="text-xs text-brand-600 font-mono mb-1 bg-brand-50 px-2 py-0.5 rounded-full">Secure Tunnel</div>
-                    <div className="w-full h-0.5 bg-brand-200 relative">
-                      <div className="absolute top-1/2 left-0 w-2 h-2 bg-brand-500 rounded-full -translate-y-1/2 animate-shimmer"></div>
-                    </div>
+                  {/* Arrows → Gateway */}
+                  <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="w-6 h-0.5 bg-brand-300 relative overflow-hidden rounded-full">
+                        <div className="absolute top-0 left-0 h-full w-2 bg-brand-500 animate-shimmer"></div>
+                      </div>
+                    ))}
                   </div>
 
-                  <div className="bg-neutral-50 p-4 rounded-xl border border-neutral-200 text-center flex-1">
-                    <div className="w-10 h-10 mx-auto bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center mb-2">
-                      <Shield size={20} />
+                  {/* Center: MCP Anywhere Gateway */}
+                  <div className="bg-brand-50 p-3 rounded-xl border border-brand-300 text-center flex-shrink-0">
+                    <div className="w-8 h-8 mx-auto bg-brand-500 text-white rounded-lg flex items-center justify-center mb-1">
+                      <Zap size={16} />
                     </div>
-                    <div className="font-semibold text-sm">Production DB</div>
-                    <div className="text-xs text-neutral-400">Server</div>
+                    <div className="font-bold text-xs text-brand-700">MCP Anywhere</div>
+                    <div className="text-xs text-brand-500">Gateway</div>
+                  </div>
+
+                  {/* Arrow → Claude Desktop */}
+                  <div className="flex flex-col items-center justify-center flex-shrink-0">
+                    <div className="w-6 h-0.5 bg-brand-300 relative overflow-hidden rounded-full">
+                      <div className="absolute top-0 left-0 h-full w-2 bg-brand-500 animate-shimmer"></div>
+                    </div>
+                    <div className="text-xs text-brand-500 font-mono mt-1">1×</div>
+                  </div>
+
+                  {/* Right: Claude Desktop */}
+                  <div className="bg-neutral-50 p-3 rounded-xl border border-neutral-200 text-center flex-1">
+                    <div className="w-8 h-8 mx-auto bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center mb-1">
+                      <Shield size={16} />
+                    </div>
+                    <div className="font-semibold text-xs">Claude Desktop</div>
+                    <div className="text-xs text-neutral-400">1 connection</div>
                   </div>
                 </div>
 
@@ -112,10 +133,11 @@ export const Hero: React.FC = () => {
                 <div className="bg-neutral-900 rounded-lg p-4 font-mono text-xs text-neutral-300">
                   <div className="flex gap-2 mb-2">
                     <span className="text-green-400">$</span>
-                    <span>npx mcp-anywhere connect</span>
+                    <span>mcp-anywhere serve http</span>
                   </div>
-                  <div className="text-neutral-500">Connecting to secure gateway...</div>
-                  <div className="text-green-400">✓ Tunnel established: wss://api.mcp.run/v1/tunnel</div>
+                  <div className="text-neutral-500">Starting MCP Anywhere gateway...</div>
+                  <div className="text-green-400">✓ 3 MCP servers connected</div>
+                  <div className="text-green-400">✓ Listening on http://localhost:8000</div>
                 </div>
               </div>
             </div>

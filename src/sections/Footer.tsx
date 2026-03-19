@@ -1,6 +1,6 @@
 import React from 'react';
 import { Container } from '../components/Container';
-import { Github, Twitter, Heart } from 'lucide-react';
+import { Github, Heart } from 'lucide-react';
 import logo from '../assets/images/logo.png';
 
 export const Footer: React.FC = () => {
@@ -9,16 +9,13 @@ export const Footer: React.FC = () => {
       <Container>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Logo & Description */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col">
+            <div className="flex items-center">
               <img 
                 src={logo} 
                 alt="MCP Anywhere" 
-                className="h-8 w-auto"
+                className="h-24 w-auto"
               />
-              <span className="font-bold text-lg text-neutral-900">
-                MCP Anywhere
-              </span>
             </div>
             <p className="text-sm leading-relaxed max-w-xs">
               A unified gateway for Model Context Protocol. 
@@ -59,7 +56,6 @@ export const Footer: React.FC = () => {
                 { label: 'GitHub', href: 'https://github.com/locomotive-agency/mcp-anywhere' },
                 { label: 'Documentation', href: '#' },
                 { label: 'MCP Spec', href: 'https://modelcontextprotocol.io' },
-                { label: 'Community', href: '#' }
               ].map((link) => (
                 <a
                   key={link.href}

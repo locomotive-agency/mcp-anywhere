@@ -44,21 +44,21 @@ export const FAQ: React.FC = () => {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <FAQItem 
-            question="Is MCP Anywhere open source?" 
-            answer="Yes! The core client and server components are open source. We also offer a managed hosted version for teams who don't want to manage their own infrastructure." 
+          <FAQItem
+            question="Is MCP Anywhere open source?"
+            answer="Yes! MCP Anywhere is fully open source and self-hosted. You run it on your own machine or server — there is no managed cloud version."
           />
-          <FAQItem 
-            question="Is it secure to expose my local database?" 
-            answer="Absolutely. We use end-to-end encryption. The traffic is tunneled through our secure gateway, but the payload is encrypted with keys that only you possess. We cannot see your data." 
+          <FAQItem
+            question="Is it secure?"
+            answer="Yes. Because MCP Anywhere runs entirely on your own infrastructure, your tool calls, API keys, and model context never leave your environment. Each MCP server runs in an isolated Docker container, and credentials are encrypted at rest."
           />
-          <FAQItem 
-            question="Does it work with Claude Desktop?" 
-            answer="Yes, MCP Anywhere is fully compatible with Claude Desktop and any other client that supports the Model Context Protocol (SSE transport)." 
+          <FAQItem
+            question="Does it work with Claude Desktop?"
+            answer="Yes, MCP Anywhere is fully compatible with Claude Desktop and any other client that supports the Model Context Protocol."
           />
-          <FAQItem 
-            question="Is there a free tier?" 
-            answer="Yes, we offer a generous free tier for individual developers. You can upgrade to a Pro plan for higher bandwidth limits and team management features." 
+          <FAQItem
+            question="How much does it cost?"
+            answer="Nothing. MCP Anywhere is completely free and open source. There are no tiers, no usage limits, and no subscription — just clone the repo and run it."
           />
         </div>
       </Container>

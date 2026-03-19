@@ -1,142 +1,393 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Container } from '../components/Container';
-import { Section } from '../components/Section';
 import { CodeBlock } from '../components/CodeBlock';
+import { ChevronRight, Info, Terminal, Globe, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+
+/* ─── Primitives (same pattern as GettingStarted) ─── */
+
+const Breadcrumb = () => (
+  <nav className="mb-8 flex items-center gap-1.5 text-sm text-neutral-500">
+    <Link to="/" className="hover:text-brand-600 transition-colors">Docs</Link>
+    <ChevronRight size={14} className="text-neutral-300" />
+    <span className="text-neutral-900 font-medium">Deployment</span>
+  </nav>
+);
+
+const SectionHeading = ({ id, icon: Icon, children }: { id: string; icon: React.ElementType; children: React.ReactNode }) => (
+  <h2 id={id} className="mb-10 flex scroll-mt-40 items-center gap-3 text-2xl font-bold text-neutral-900">
+    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-100 text-brand-700 flex-shrink-0">
+      <Icon size={16} />
+    </span>
+    {children}
+  </h2>
+);
+
+const Callout = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <div className={`my-6 flex gap-3 rounded-xl border border-brand-200 bg-brand-50 p-4 ${className}`}>
+    <Info size={16} className="text-brand-600 flex-shrink-0 mt-0.5" />
+    <p className="text-sm text-brand-900 leading-relaxed">{children}</p>
+  </div>
+);
+
+const DocSection = ({ first = false, children }: { first?: boolean; children: React.ReactNode }) => (
+  <section className={first ? '' : 'border-t border-neutral-100 pt-16'}>
+    {children}
+  </section>
+);
+
+const CodeLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="mt-5 mb-3 text-base leading-relaxed text-neutral-600">
+    {children}
+  </p>
+);
+
+const StepItem = ({ number, title, last = false, children }: {
+  number: number; title: string; last?: boolean; children: React.ReactNode;
+}) => (
+  <div className="relative flex gap-6">
+    <div className="flex flex-col items-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-full bg-brand-500 text-neutral-900 font-bold text-sm flex items-center justify-center z-10 shadow-sm flex-shrink-0">
+        {number}
+      </div>
+      {!last && <div className="w-px flex-1 bg-neutral-200 mt-2"></div>}
+    </div>
+    <div className={`flex-1 min-w-0 ${last ? 'pb-0' : 'pb-16'}`}>
+      <h3 className="mt-1 mb-5 text-xl font-semibold text-neutral-900">{title}</h3>
+      <div className="space-y-5">{children}</div>
+    </div>
+  </div>
+);
+
+/* ─── Sidebar TOC ─── */
+
+const tocLinks = [
+  { href: '#why-flyio', label: 'Why Fly.io?' },
+  { href: '#prerequisites', label: 'Prerequisites' },
+  {
+    href: '#installation', label: 'Installation', children: [
+      { href: '#install-cli', label: 'Install Fly CLI' },
+      { href: '#authenticate', label: 'Authenticate' },
+    ]
+  },
+  {
+    href: '#deploy', label: 'Deployment', children: [
+      { href: '#init-app', label: 'Initialize App' },
+      { href: '#set-secrets', label: 'Set Secrets' },
+      { href: '#storage', label: 'Persistent Storage' },
+      { href: '#deploy-app', label: 'Deploy' },
+      { href: '#verify', label: 'Verify' },
+    ]
+  },
+  { href: '#monitoring', label: 'Monitoring' },
+  { href: '#updating', label: 'Updating' },
+  { href: '#troubleshooting', label: 'Troubleshooting' },
+];
+
+const Sidebar = () => (
+  <aside className="hidden lg:block w-56 shrink-0">
+    <div className="sticky top-36">
+      <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">On this page</p>
+      <nav className="space-y-1">
+        {tocLinks.map(link => (
+          <div key={link.href}>
+            <a
+              href={link.href}
+              className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium p-2"
+            >
+              {link.label}
+            </a>
+            {link.children && (
+              <div className="pl-3 border-l-2 border-neutral-100 ml-1 mb-1 space-y-0.5">
+                {link.children.map(child => (
+                  <a
+                    key={child.href}
+                    href={child.href}
+                    className="block text-sm text-neutral-500 hover:text-brand-600 transition-colors p-2 ml-2"
+                  >
+                    {child.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </nav>
+
+      <div className="mt-8 pt-6 border-t border-neutral-200">
+        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Previous</p>
+        <Link
+          to="/getting-started"
+          className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium"
+        >
+          ← Getting Started
+        </Link>
+      </div>
+    </div>
+  </aside>
+);
+
+/* ─── Page ─── */
 
 export const Deployment: React.FC = () => {
   return (
-    <div className="pt-20 min-h-screen bg-neutral-50">
-      <Section className="bg-white border-b border-neutral-200 pb-8 pt-20">
-        <Container>
-          <h1 className="text-4xl font-bold text-neutral-900 mb-4">Deployment</h1>
-          <p className="text-xl text-neutral-600 max-w-2xl">
-            Get your MCP Anywhere instance running in production with our step-by-step guides.
-          </p>
+    <div className="min-h-screen bg-white pt-28">
+
+      {/* Page hero */}
+      <div className="border-b border-neutral-200 bg-neutral-50">
+        <Container className="pt-32 mb-12">
+          <Breadcrumb />
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <h1 className="mb-4 text-4xl font-bold text-neutral-900">Deployment</h1>
+              <p className="max-w-2xl text-lg leading-relaxed text-neutral-600">
+                Deploy MCP Anywhere to Fly.io for a production-ready instance with automatic SSL and global availability.
+              </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 bg-brand-100 text-brand-800 text-xs font-semibold px-3 py-1.5 rounded-full border border-brand-200 flex-shrink-0 mt-1">
+              <Globe size={11} />
+              Fly.io
+            </div>
+          </div>
         </Container>
-      </Section>
+      </div>
 
-      <Container className="py-12">
-        <div className="mx-auto space-y-24">
+      {/* Body */}
+      <Container className="py-20">
+        <div className="flex gap-16 max-w-6xl">
 
-          <section className="scroll-mt-24 pt-16">
-            <div className="prose max-w-none">
-              <h2 className="text-3xl font-bold text-neutral-900 mb-4 flex items-center gap-3">
-                <span
-                  className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold"
-                  style={{ backgroundColor: 'var(--color-brand-100)', color: 'var(--color-brand-700)' }}
-                >1</span>
-                Deploy to Fly.io
-              </h2>
-              <p className="text-lg text-neutral-600 mb-10 leading-relaxed">
-                Fly.io is our recommended platform for hosting MCP Anywhere. It offers excellent global distribution, native Docker support, and a generous free tier.
-              </p>
+          <Sidebar />
 
-              <div className="space-y-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-4">1. Install Fly CLI</h3>
-                  <p className="text-neutral-600 mb-6">First, you'll need the Fly.io command line tool installed on your machine.</p>
-                  <CodeBlock code={`brew install flyctl # macOS
-# or
-curl -L https://fly.io/install.sh | sh # Linux/WSL`} language="bash" />
-                </div>
+          <main className="flex-1 min-w-0 max-w-3xl space-y-0">
 
-                <div className="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-4">2. Launch App</h3>
-                  <p className="text-neutral-600 mb-6">Initialize your app. This will generate a <code className="text-sm bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-800">fly.toml</code> configuration file.</p>
-                  <CodeBlock code={`fly launch`} language="bash" />
-                  <p className="text-neutral-600 mt-8 text-sm">
-                    <strong>Note:</strong> Follow the interactive prompts to configure your app name and region.
-                  </p>
-                </div>
-
-                <div className="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-4">3. Set Secrets</h3>
-                  <p className="text-neutral-600 mb-6">Configure your environment variables securely.</p>
-                  <CodeBlock
-                    code={`fly secrets set SECRET_KEY=your_secret_key \\
-  JWT_SECRET_KEY=your_jwt_secret \\
-  ANTHROPIC_API_KEY=sk-...`}
-                    language="bash"
-                  />
-                </div>
-
-                <div className="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-4">4. Deploy</h3>
-                  <p className="text-neutral-600 mb-6">Push your application to the cloud.</p>
-                  <CodeBlock code={`fly deploy`} language="bash" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="scroll-mt-24 pt-16">
-            <div className="prose max-w-none">
-              <h2 className="text-3xl font-bold text-neutral-900 mb-4 flex items-center gap-3">
-                <span
-                  className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold"
-                  style={{ backgroundColor: 'var(--color-brand-100)', color: 'var(--color-brand-700)' }}
-                >2</span>
-                Monitoring
-              </h2>
-              <p className="text-lg text-neutral-600 mb-10">
-                Keep track of your application's health and performance.
-              </p>
-
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">View Logs</h3>
-                  <p className="text-neutral-600 mb-6 text-sm">Stream real-time application logs.</p>
-                  <CodeBlock code={`fly logs -f`} language="bash" />
-                </div>
-                <div className="bg-white p-8 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Metrics</h3>
-                  <p className="text-neutral-600 mb-6 text-sm">Open the metrics dashboard.</p>
-                  <CodeBlock code={`fly dashboard metrics`} language="bash" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="scroll-mt-24 pt-16">
-            <div className="prose max-w-none">
-              <h2 className="text-3xl font-bold text-neutral-900 mb-8 flex items-center gap-3">
-                <span
-                  className="flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold"
-                  style={{ backgroundColor: 'var(--color-brand-100)', color: 'var(--color-brand-700)' }}
-                >3</span>
-                Troubleshooting
-              </h2>
-
-              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200">
-                <div className="p-8 border-b border-neutral-200">
-                  <h3 className="text-xl font-semibold text-neutral-900 mb-6">Common Issues</h3>
-                  <div className="space-y-6">
-                    <div className="flex gap-4 items-start">
-                      <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">!</div>
-                      <div>
-                        <h4 className="font-medium text-neutral-900 text-lg">App Won't Start</h4>
-                        <ul className="mt-3 space-y-2 text-neutral-600 list-disc list-inside">
-                          <li>Check logs with <code>fly logs</code></li>
-                          <li>Verify all environment variables are set</li>
-                          <li>Ensure Docker build completed successfully</li>
-                        </ul>
-                      </div>
+            {/* Why Fly.io */}
+            <DocSection first>
+              <SectionHeading id="why-flyio" icon={Globe}>Why Fly.io?</SectionHeading>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  ['Global edge deployment', 'Run close to your users worldwide'],
+                  ['Automatic SSL certificates', 'HTTPS out of the box'],
+                  ['Built-in persistent storage', 'Volumes for database and secrets'],
+                  ['Free tier available', 'No cost to get started'],
+                ].map(([title, desc]) => (
+                  <div key={title} className="flex gap-3 border border-neutral-200 rounded-xl p-4 bg-neutral-50">
+                    <CheckCircle size={16} className="text-brand-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-800">{title}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">{desc}</p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </DocSection>
+
+            {/* Prerequisites */}
+            <DocSection>
+              <SectionHeading id="prerequisites" icon={CheckCircle}>Prerequisites</SectionHeading>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'Fly.io account', detail: 'Sign up free at fly.io', href: 'https://fly.io' },
+                  { label: 'Repo cloned locally', detail: 'See Getting Started' },
+                  { label: 'Docker running', detail: 'Required for local build' },
+                ].map(item => (
+                  <div key={item.label} className="border border-neutral-200 rounded-xl p-4 bg-neutral-50">
+                    {item.href ? (
+                      <a href={item.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 hover:underline text-sm">
+                        {item.label}
+                      </a>
+                    ) : (
+                      <p className="font-semibold text-neutral-900 text-sm">{item.label}</p>
+                    )}
+                    <p className="text-xs text-neutral-500 mt-0.5">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </DocSection>
+
+            {/* Installation */}
+            <DocSection>
+              <SectionHeading id="installation" icon={Terminal}>Installation</SectionHeading>
+              <div className="space-y-0">
+
+                <span id="install-cli" className="block scroll-mt-40"></span>
+                <StepItem number={1} title="Install Fly CLI">
+                  <div className="space-y-5 mb-8">
+                    <div className='mb-6'>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">macOS</p>
+                      <CodeBlock code={`brew install flyctl`} />
+                    </div>
+                    <div className='mb-6'>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">Linux / WSL</p>
+                      <CodeBlock code={`curl -L https://fly.io/install.sh | sh`} />
+                    </div>
+                    <div className='mb-6'>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">Windows (PowerShell)</p>
+                      <CodeBlock code={`iwr https://fly.io/install.ps1 -useb | iex`} />
+                    </div>
+                  </div>
+                </StepItem>
+
+                <span id="authenticate" className="block scroll-mt-40"></span>
+                <StepItem number={2} title="Authenticate" last>
+                  <div className='mb-16 mt-4'>
+                    <CodeBlock code={`fly auth login`} />
+                  </div>
+                </StepItem>
+
+              </div>
+            </DocSection>
+
+            {/* Deployment */}
+            <DocSection>
+              <SectionHeading id="deploy" icon={Globe}>Deployment</SectionHeading>
+              <div className="space-y-0">
+
+                <span id="init-app" className="block scroll-mt-40"></span>
+                <StepItem number={1} title="Initialize Your App">
+                  <div className='mb-6 mt-4'>
+                    <CodeBlock code={`cd mcp-anywhere
+fly launch`} />
+                  </div>
+                  <Callout className='mb-8'>
+                    When prompted: choose an app name, select a region close to you, skip PostgreSQL and Redis, and confirm creating the app.
+                  </Callout>
+                </StepItem>
+
+                <span id="set-secrets" className="block scroll-mt-40"></span>
+                <StepItem number={2} title="Configure Environment Variables">
+                  <div className='mb-6 mt-4'>
+                    <CodeLabel>Generate secure keys first:</CodeLabel>
+                    <CodeBlock code={`python -c "import secrets; print(secrets.token_urlsafe(32))"`} />
+                  </div>
+                  <div className='mb-8'>
+                    <CodeLabel>Then set all required secrets:</CodeLabel>
+                    <CodeBlock code={`fly secrets set SECRET_KEY="your-secret-key-here"
+fly secrets set JWT_SECRET_KEY="your-jwt-secret-here"
+fly secrets set ANTHROPIC_API_KEY="your-anthropic-api-key-here"`} />
+                  </div>
+                </StepItem>
+
+                <span id="storage" className="block scroll-mt-40"></span>
+                <StepItem number={3} title="Create Persistent Storage">
+                  <div className='mb-6 mt-4'>
+                    <CodeLabel>MCP Anywhere needs a volume for its database and secrets:</CodeLabel>
+                    <CodeBlock code={`fly volumes create mcp_data --size 10`} />
+                  </div>
+                </StepItem>
+
+                <span id="deploy-app" className="block scroll-mt-40"></span>
+                <StepItem number={4} title="Deploy">
+                  <div className='mb-6 mt-4'>
+                    <CodeBlock code={`fly deploy`} />
+                  </div>
+                  <p className="text-base leading-relaxed text-neutral-600 mb-8">This builds the Docker image, pushes to Fly's registry, and starts the app in your chosen region.</p>
+                </StepItem>
+
+                <span id="verify" className="block scroll-mt-40"></span>
+                <StepItem number={5} title="Verify Deployment" last>
+                  <div className='mb-6 mt-4'>
+                    <CodeBlock code={`# Check status
+fly status
+
+# View logs
+fly logs
+
+# Open in browser
+fly open`} />
+                  </div>
+                  <Callout className='mb-16'>
+                    Your instance is live at <strong>https://your-app-name.fly.dev</strong>
+                  </Callout>
+                </StepItem>
+
+              </div>
+            </DocSection>
+
+            {/* Monitoring */}
+            <DocSection>
+              <SectionHeading id="monitoring" icon={Terminal}>Monitoring</SectionHeading>
+              <div className="grid sm:grid-cols-2 gap-6 mb-16">
+                {[
+                  {
+                    title: 'View Logs',
+                    desc: 'Stream real-time application logs.',
+                    code: `# Live stream
+fly logs -f
+
+# Last 100 lines
+fly logs -n 100`,
+                  },
+                  {
+                    title: 'Metrics',
+                    desc: 'Open the Fly.io metrics dashboard.',
+                    code: `fly dashboard metrics`,
+                  },
+                ].map(({ title, desc, code }) => (
+                  <div key={title} className="border border-neutral-200 rounded-xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-neutral-100">
+                      <p className="font-semibold text-neutral-900 text-sm px-2">{title}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5 px-2">{desc}</p>
+                    </div>
+                    <div className="p-6">
+                      <CodeBlock code={code} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </DocSection>
+
+            {/* Updating */}
+            <DocSection>
+              <SectionHeading id="updating" icon={RefreshCw}>Updating</SectionHeading>
+              <p className="-mt-2 mb-6 text-base leading-relaxed text-neutral-600">To deploy a new version of MCP Anywhere:</p>
+              <CodeBlock code={`# Pull latest changes
+git pull origin main
+
+# Deploy updates
+fly deploy`} />
+            </DocSection>
+
+            {/* Troubleshooting */}
+            <DocSection>
+              <SectionHeading id="troubleshooting" icon={AlertCircle}>Troubleshooting</SectionHeading>
+              <div className="space-y-6">
+
+                <div className="border border-neutral-200 rounded-xl overflow-hidden mb-8">
+                  <div className="flex items-center gap-2 bg-neutral-50 border-b border-neutral-200 p-2">
+                    <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                    <span className="text-sm font-semibold text-neutral-800">App Won't Start</span>
+                  </div>
+                  <div className="space-y-4 p-6">
+                    <CodeBlock code={`# Check logs for errors
+fly logs -n 200
+
+# Common causes:
+# - Missing environment variables
+# - Docker build failures
+# - Port binding issues`} />
                   </div>
                 </div>
 
-                <div className="p-8 bg-neutral-50">
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Emergency Reset</h3>
-                  <p className="text-neutral-600 mb-6">
-                    If you need to completely reset the database and start fresh:
-                  </p>
-                  <CodeBlock code={`fly ssh console
-/app/venv/bin/python -m mcp_anywhere reset --confirm`} language="bash" />
-                </div>
-              </div>
-            </div>
-          </section>
+                <div className="border border-neutral-200 rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-2 bg-neutral-50 border-b border-neutral-200 p-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                    <span className="text-sm font-semibold text-neutral-800">Emergency Reset</span>
+                  </div>
 
+                  <div className="space-y-4 p-6">
+                    <p className="text-base leading-relaxed text-neutral-600 mb-4">If you need to wipe the database and start fresh:</p>
+                    <CodeBlock code={`# SSH into your instance
+fly ssh console
+
+# Run the reset command
+/app/venv/bin/python -m mcp_anywhere reset --confirm`} />
+                  </div>
+                </div>
+
+              </div>
+            </DocSection>
+
+          </main>
         </div>
       </Container>
     </div>

@@ -71,11 +71,11 @@ export const Header: React.FC = () => {
             <img 
               src={logo} 
               alt="MCP Anywhere" 
-              className="h-8 w-auto group-hover:scale-105 transition-transform"
+              className="h-24 w-auto group-hover:scale-105 transition-transform"
             />
-            <span className="font-bold text-xl text-neutral-900 tracking-tight">
+            {/* <span className="font-bold text-xl text-neutral-900 tracking-tight">
               MCP Anywhere
-            </span>
+            </span> */}
           </Link>
 
           {/* Desktop Nav */}
