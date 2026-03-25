@@ -168,7 +168,7 @@ const Sidebar = () => {
                   className={[
                     'block text-sm transition-colors font-medium py-2',
                     activeParent
-                      ? 'text-brand-600 bg-brand-50 rounded-md'
+                      ? 'text-brand-600 rounded-md'
                       : 'text-neutral-600 hover:text-brand-600'
                   ].join(' ')}
                 >
@@ -185,7 +185,7 @@ const Sidebar = () => {
                           className={[
                             'block text-sm transition-colors py-2 px-2',
                             activeChild
-                              ? 'text-brand-600 bg-brand-50 rounded-md'
+                              ? 'text-brand-600 rounded-md'
                               : 'text-neutral-500 hover:text-brand-600'
                           ].join(' ')}
                         >
