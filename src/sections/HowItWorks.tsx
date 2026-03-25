@@ -5,7 +5,7 @@ import { Download, Globe, CheckCircle } from 'lucide-react';
 
 export const HowItWorks: React.FC = () => {
   return (
-    <Section className="py-24 bg-surface">
+    <Section id="how-it-works" className="py-24 bg-surface">
       <Container>
         <div className="text-center max-w-2xl mx-auto mb-16">
           <div className="inline-flex items-center border border-brand-500 px-3 py-1 mb-4 text-xs font-semibold tracking-wider text-black uppercase bg-brand-50 rounded-full">

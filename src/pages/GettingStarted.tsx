@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Container } from '../components/Container';
 import { CodeBlock } from '../components/CodeBlock';
@@ -91,48 +91,128 @@ const tocLinks = [
   { href: '#popular-servers', label: 'Popular Servers' },
 ];
 
-const Sidebar = () => (
-  <aside className="hidden lg:block w-56 shrink-0">
-    <div className="sticky top-36">
-      <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">On this page</p>
-      <nav className="space-y-1 gap-4">
-        {tocLinks.map(link => (
-          <div key={link.href}>
-            <a
-              href={link.href}
-              className="block text-sm text-neutral-600 hover:text-brand-600 py-1.5 transition-colors font-medium py-2"
-            >
-              {link.label}
-            </a>
-            {link.children && (
-              <div className="border-l-4 border-neutral-100 space-y-0.5">
-                {link.children.map(child => (
-                  <a
-                    key={child.href}
-                    href={child.href}
-                    className="block text-sm text-neutral-500 hover:text-brand-600 transition-colors py-2 ml-2"
-                  >
-                    {child.label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
+const Sidebar = () => {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const topOffsetPx = 144; // matches the fixed header / scroll offset behavior
 
-      <div className="mt-8 pt-6 border-t border-neutral-200">
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Next</p>
-        <Link
-          to="/deployment"
-          className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium"
-        >
-          Deployment →
-        </Link>
+  const tocIds = useMemo(() => {
+    const stripHash = (href: string) => href.replace(/^#/, '');
+    return tocLinks.flatMap(link => [
+      stripHash(link.href),
+      ...(link.children ? link.children.map(c => stripHash(c.href)) : [])
+    ]);
+  }, []);
+
+  useEffect(() => {
+    const stripHash = (href: string) => href.replace(/^#/, '');
+
+    const updateActive = () => {
+      // If user navigated via hash, prefer that initially.
+      const hashId = stripHash(window.location.hash || '');
+      if (hashId) setActiveId(hashId);
+
+      const targets = tocIds
+        .map(id => document.getElementById(id))
+        .filter((el): el is HTMLElement => Boolean(el));
+
+      if (!targets.length) return;
+
+      const tolerance = 24;
+      const candidates = targets
+        .map(el => ({ id: el.id, top: el.getBoundingClientRect().top }))
+        .filter(c => c.top <= topOffsetPx + tolerance)
+        .sort((a, b) => b.top - a.top);
+
+      if (candidates[0]?.id) setActiveId(candidates[0].id);
+    };
+
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        updateActive();
+      });
+    };
+
+    updateActive();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [tocIds]);
+
+  const stripHash = (href: string) => href.replace(/^#/, '');
+
+  const isActiveHref = (href: string) => activeId === stripHash(href);
+  const isActiveGroup = (link: (typeof tocLinks)[number]) => {
+    if (isActiveHref(link.href)) return true;
+    return Boolean(link.children?.some(child => isActiveHref(child.href)));
+  };
+
+  return (
+    <aside className="hidden lg:block w-56 shrink-0">
+      <div className="toc-sticky">
+        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">On this page</p>
+        <nav className="space-y-1 gap-4">
+          {tocLinks.map(link => {
+            const activeParent = isActiveGroup(link);
+            return (
+              <div key={link.href}>
+                <a
+                  href={link.href}
+                  className={[
+                    'block text-sm transition-colors font-medium py-2',
+                    activeParent
+                      ? 'text-brand-600 bg-brand-50 rounded-md'
+                      : 'text-neutral-600 hover:text-brand-600'
+                  ].join(' ')}
+                >
+                  {link.label}
+                </a>
+                {link.children && (
+                  <div className="border-l-4 border-neutral-100 space-y-0.5">
+                    {link.children.map(child => {
+                      const activeChild = isActiveHref(child.href);
+                      return (
+                        <a
+                          key={child.href}
+                          href={child.href}
+                          className={[
+                            'block text-sm transition-colors py-2 px-2',
+                            activeChild
+                              ? 'text-brand-600 bg-brand-50 rounded-md'
+                              : 'text-neutral-500 hover:text-brand-600'
+                          ].join(' ')}
+                        >
+                          {child.label}
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="mt-8 pt-6 border-t border-neutral-200">
+          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Next</p>
+          <Link
+            to="/deployment"
+            className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium"
+          >
+            Deployment →
+          </Link>
+        </div>
       </div>
-    </div>
-  </aside>
-);
+    </aside>
+  );
+};
 
 /* ─── Page ─── */
 
@@ -309,7 +389,7 @@ mcp-anywhere serve http`} />
                   <div className="border border-neutral-200 rounded-xl overflow-hidden">
                     {[
                       ['Server Status', 'Active / inactive indicator'],
-                      ['Available Tools', 'Count of tools provided by the server'],
+                      ['Available Tools', 'The tools provided by the server'],
                       ['Configuration Details', 'Runtime type, GitHub URL, and other attributes'],
                     ].map(([label, desc], i) => (
                       <div key={label} className={`flex gap-4 p-2 text-sm ${i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}>

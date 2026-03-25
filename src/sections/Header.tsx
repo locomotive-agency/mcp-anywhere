@@ -11,6 +11,10 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -50,7 +54,7 @@ export const Header: React.FC = () => {
 
   const navLinks = [
     { label: 'Features', href: 'features', type: 'scroll' },
-    { label: 'How it works', href: 'how-it-works', type: 'scroll' },
+    { label: 'How it Works', href: 'how-it-works', type: 'scroll' },
     { label: 'Security', href: 'security', type: 'scroll' },
     { label: 'Getting Started', href: '/getting-started', type: 'page' },
     { label: 'Deployment', href: '/deployment', type: 'page' },
@@ -67,7 +71,16 @@ export const Header: React.FC = () => {
       <Container>
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link
+            to="/"
+            className="flex items-center gap-3 group"
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              // If we are already on the homepage route, React Router won't
+              // trigger ScrollToTop (it relies on pathname changes).
+              if (location.pathname === '/') scrollToTop();
+            }}
+          >
             <img 
               src={logo} 
               alt="MCP Anywhere" 

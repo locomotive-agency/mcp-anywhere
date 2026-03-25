@@ -76,7 +76,7 @@ export const Footer: React.FC = () => {
           <p className="text-sm text-neutral-500 flex items-center gap-2 flex-wrap justify-center md:justify-start mt-8">
             © {new Date().getFullYear()} MCP Anywhere. 
             <span className="inline-flex items-center gap-1">
-              Built with <Heart size={14} className="text-red-500 fill-current" /> by Locomotive Agency
+              Built with <Heart size={14} className="text-red-500 fill-current" /> by LOCOMOTIVE Agency
             </span>
           </p>
           

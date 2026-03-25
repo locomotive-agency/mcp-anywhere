@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Container } from '../components/Container';
 import { CodeBlock } from '../components/CodeBlock';
@@ -84,48 +84,127 @@ const tocLinks = [
   { href: '#troubleshooting', label: 'Troubleshooting' },
 ];
 
-const Sidebar = () => (
-  <aside className="hidden lg:block w-56 shrink-0">
-    <div className="sticky top-36">
-      <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">On this page</p>
-      <nav className="space-y-1">
-        {tocLinks.map(link => (
-          <div key={link.href}>
-            <a
-              href={link.href}
-              className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium p-2"
-            >
-              {link.label}
-            </a>
-            {link.children && (
-              <div className="pl-3 border-l-2 border-neutral-100 ml-1 mb-1 space-y-0.5">
-                {link.children.map(child => (
-                  <a
-                    key={child.href}
-                    href={child.href}
-                    className="block text-sm text-neutral-500 hover:text-brand-600 transition-colors p-2 ml-2"
-                  >
-                    {child.label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </nav>
+const Sidebar = () => {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const topOffsetPx = 144; // matches the fixed header / scroll offset behavior
 
-      <div className="mt-8 pt-6 border-t border-neutral-200">
-        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Previous</p>
-        <Link
-          to="/getting-started"
-          className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium"
-        >
-          ← Getting Started
-        </Link>
+  const tocIds = useMemo(() => {
+    const stripHash = (href: string) => href.replace(/^#/, '');
+    return tocLinks.flatMap(link => [
+      stripHash(link.href),
+      ...(link.children ? link.children.map(c => stripHash(c.href)) : [])
+    ]);
+  }, []);
+
+  useEffect(() => {
+    const stripHash = (href: string) => href.replace(/^#/, '');
+
+    const updateActive = () => {
+      const hashId = stripHash(window.location.hash || '');
+      if (hashId) setActiveId(hashId);
+
+      const targets = tocIds
+        .map(id => document.getElementById(id))
+        .filter((el): el is HTMLElement => Boolean(el));
+
+      if (!targets.length) return;
+
+      const tolerance = 24;
+      const candidates = targets
+        .map(el => ({ id: el.id, top: el.getBoundingClientRect().top }))
+        .filter(c => c.top <= topOffsetPx + tolerance)
+        .sort((a, b) => b.top - a.top);
+
+      if (candidates[0]?.id) setActiveId(candidates[0].id);
+    };
+
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        updateActive();
+      });
+    };
+
+    updateActive();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [tocIds]);
+
+  const stripHash = (href: string) => href.replace(/^#/, '');
+
+  const isActiveHref = (href: string) => activeId === stripHash(href);
+  const isActiveGroup = (link: (typeof tocLinks)[number]) => {
+    if (isActiveHref(link.href)) return true;
+    return Boolean(link.children?.some(child => isActiveHref(child.href)));
+  };
+
+  return (
+    <aside className="hidden lg:block w-56 shrink-0">
+      <div className="toc-sticky">
+        <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">On this page</p>
+        <nav className="space-y-1">
+          {tocLinks.map(link => {
+            const activeParent = isActiveGroup(link);
+            return (
+              <div key={link.href}>
+                <a
+                  href={link.href}
+                  className={[
+                    'block text-sm transition-colors font-medium p-2',
+                    activeParent
+                      ? 'text-brand-600 rounded-md'
+                      : 'text-neutral-600 hover:text-brand-600'
+                  ].join(' ')}
+                >
+                  {link.label}
+                </a>
+                {link.children && (
+                  <div className="pl-3 border-l-2 border-neutral-100 ml-1 mb-1 space-y-0.5">
+                    {link.children.map(child => {
+                      const activeChild = isActiveHref(child.href);
+                      return (
+                        <a
+                          key={child.href}
+                          href={child.href}
+                          className={[
+                            'block text-sm transition-colors py-2 px-4',
+                            activeChild
+                              ? 'text-brand-600 rounded-md'
+                              : 'text-neutral-500 hover:text-brand-600'
+                          ].join(' ')}
+                        >
+                          {child.label}
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="mt-8 pt-6 border-t border-neutral-200">
+          <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">Previous</p>
+          <Link
+            to="/getting-started"
+            className="block text-sm text-neutral-600 hover:text-brand-600 transition-colors font-medium"
+          >
+            ← Getting Started
+          </Link>
+        </div>
       </div>
-    </div>
-  </aside>
-);
+    </aside>
+  );
+};
 
 /* ─── Page ─── */
 

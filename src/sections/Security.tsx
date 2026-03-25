@@ -5,7 +5,7 @@ import { ShieldCheck, Check } from 'lucide-react';
 
 export const Security: React.FC = () => {
   return (
-    <Section className="py-24 bg-surface relative overflow-hidden">
+    <Section id="security" className="py-24 bg-surface relative overflow-hidden">
       <Container>
         <div className="flex flex-col lg:flex-row items-center gap-16">
           <div className="flex-1">

@@ -14,6 +14,17 @@
   position: relative;
 }
 
+/* Sticky Table of Contents (left sidebar) */
+.toc-sticky {
+  position: sticky;
+  /* Matches the fixed header's approximate maximum height */
+  top: 9rem; /* ~144px */
+  /* If the TOC is taller than the viewport, keep it usable */
+  max-height: calc(100vh - 9rem - 2rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .section-alt {
   background-color: var(--bg-surface);
 }
