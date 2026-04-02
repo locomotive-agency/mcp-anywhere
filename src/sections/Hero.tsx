@@ -31,7 +31,7 @@ export const Hero: React.FC = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500"></span>
               </span>
-              Now Available for Everyone
+              Open source & self-hosted
             </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 tracking-tight text-neutral-900 animate-fade-in delay-100">
@@ -40,13 +40,13 @@ export const Hero: React.FC = () => {
             </h1>
             
             <p className="text-xl text-neutral-600 mb-8 max-w-2xl mx-auto lg:mx-0 animate-fade-in delay-200">
-              Connect any AI client to any MCP server instantly. 
-              Enterprise-grade security, centralized management, and zero friction.
+              Route MCP-compatible clients to your servers through one gateway you run yourself. 
+              Repo-driven configuration, Docker-isolated MCP processes, keys and traffic on your infrastructure.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in delay-300">
               <Button size="lg" href="#get-started">
-                Get Started Free <ArrowRight size={18} />
+                Quick start <ArrowRight size={18} />
               </Button>
               <Button size="lg" variant="outline" href="https://github.com/locomotive-agency/mcp-anywhere" target="_blank">
                 <Github size={18} /> Star on GitHub
@@ -55,7 +55,7 @@ export const Hero: React.FC = () => {
 
             <div className="mt-10 flex items-center justify-center lg:justify-start gap-8 text-sm text-neutral-500 animate-fade-in delay-300">
               <div className="flex items-center gap-2">
-                <Zap size={16} className="text-brand-500" /> Instant Setup
+                <Zap size={16} className="text-brand-500" /> CLI-first
               </div>
               <div className="flex items-center gap-2">
                 <Shield size={16} className="text-brand-500" /> Secure by Default

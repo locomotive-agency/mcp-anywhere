@@ -15,10 +15,10 @@ export const FinalCTA: React.FC = () => {
       <Container className="relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-2 text-neutral-900">
-            Free, open source, and self-hosted.
+            Open source and self-hosted.
           </h2>
           <p className="text-lg text-neutral-600">
-            Clone the repo and have all your MCP servers running in minutes. No account, no credit card, no limits.
+            Source and issues live on GitHub; step-by-step setup is in the docs. Fork or clone and run it where you deploy code.
           </p>
         </div>
 

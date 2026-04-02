@@ -126,7 +126,7 @@ export const Header: React.FC = () => {
             >
               <Github size={20} />
             </a>
-            <Button size="sm" onClick={(e) => scrollToSection(e as any, 'get-started')}>Get Started</Button>
+            <Button size="sm" onClick={(e) => scrollToSection(e as any, 'get-started')}>Quick start</Button>
           </div>
 
            {/* Mobile Menu Toggle */}
@@ -172,7 +172,7 @@ export const Header: React.FC = () => {
                 >
                   <Github size={18} /> View on GitHub
                 </Button>
-                <Button onClick={(e) => scrollToSection(e as any, 'get-started')}>Get Started</Button>
+                <Button onClick={(e) => scrollToSection(e as any, 'get-started')}>Quick start</Button>
               </div>
             </nav>
           </div>

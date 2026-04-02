@@ -13,10 +13,10 @@ export const QuickStart: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-12 items-center">
           <div className="flex-1">
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
-              Start building in seconds
+              Clone, run, connect
             </h2>
             <p className="text-white text-lg mb-8 text-white">
-              Clone the repo, start the gateway, and have all your MCP servers available in Claude Desktop in minutes.
+              Pull the project from GitHub, start the bundled web UI and gateway, then add one Claude Desktop entry for every tool behind it.
             </p>
 
             <div className="space-y-6">
@@ -31,7 +31,7 @@ export const QuickStart: React.FC = () => {
                 <div className="w-8 h-8 rounded-full bg-neutral-700 text-white flex items-center justify-center font-bold">2</div>
                 <div>
                   <h4 className="font-bold mb-1 text-neutral-400">Add MCP Servers</h4>
-                  <p className="text-neutral-400 text-sm">Open the web UI and paste any GitHub MCP repository URL. Claude AI auto-configures it.</p>
+                  <p className="text-neutral-400 text-sm">In the web UI, paste a GitHub MCP server repo URL; the project’s helpers generate the config.</p>
                 </div>
               </div>
               <div className="flex gap-4">

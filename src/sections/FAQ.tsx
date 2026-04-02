@@ -39,7 +39,7 @@ export const FAQ: React.FC = () => {
             Frequently Asked Questions
           </h2>
           <p className="text-lg text-neutral-600">
-            Got questions about MCP Anywhere? We've got answers.
+            License, security model, and running it yourself.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export const FAQ: React.FC = () => {
           />
           <FAQItem
             question="How much does it cost?"
-            answer="Nothing. MCP Anywhere is completely free and open source. There are no tiers, no usage limits, and no subscription — just clone the repo and run it."
+            answer="Nothing. The project is open source and self-hosted: clone it, run it on your hardware, and choose your own hosting costs if any. There is no product signup or paid plan from us."
           />
         </div>
       </Container>

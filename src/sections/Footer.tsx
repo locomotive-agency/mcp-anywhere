@@ -18,8 +18,8 @@ export const Footer: React.FC = () => {
               />
             </div>
             <p className="text-sm leading-relaxed max-w-xs">
-              A unified gateway for Model Context Protocol. 
-              Secure, scalable, and open source.
+              Open-source gateway for Model Context Protocol. 
+              Run it yourself; code and docs on GitHub.
             </p>
           </div>
 
@@ -54,7 +54,7 @@ export const Footer: React.FC = () => {
             <div className="flex flex-col gap-3">
               {[
                 { label: 'GitHub', href: 'https://github.com/locomotive-agency/mcp-anywhere' },
-                { label: 'Documentation', href: '#' },
+                { label: 'Documentation', href: '/getting-started' },
                 { label: 'MCP Spec', href: 'https://modelcontextprotocol.io' },
               ].map((link) => (
                 <a

@@ -12,10 +12,10 @@ export const HowItWorks: React.FC = () => {
             Workflow
           </div>
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-neutral-900">
-            Connect in minutes, not days
+            Install, expose, connect
           </h2>
           <p className="text-lg text-neutral-600">
-            No complex VPNs or firewall configurations. MCP Anywhere just works.
+            Fewer bespoke VPN or firewall setups when the gateway runs on hardware you control.
           </p>
         </div>
 
@@ -27,7 +27,7 @@ export const HowItWorks: React.FC = () => {
             {
               icon: <Download className="w-6 h-6 text-white" />,
               title: "1. Install CLI",
-              desc: "Run a simple command to install the MCP Anywhere agent on your server or local machine.",
+              desc: "Install from the repo on your laptop or server with the CLI (see the docs for Python/Docker prerequisites).",
               color: "bg-blue-500"
             },
             {

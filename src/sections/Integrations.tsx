@@ -8,10 +8,10 @@ export const Integrations: React.FC = () => {
       <Container>
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-2 text-neutral-900">
-            Works with your favorite tools
+            Works with common MCP clients
           </h2>
           <p className="text-lg text-neutral-600">
-            MCP Anywhere is designed to be compatible with the entire Model Context Protocol ecosystem.
+            Anything that speaks MCP can use the gateway URL you configure—desktop apps, editors, and custom clients.
           </p>
         </div>
 

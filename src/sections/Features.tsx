@@ -14,7 +14,7 @@ export const Features: React.FC = () => {
     {
       icon: <Zap className="w-6 h-6 text-brand-600" />,
       title: "Auto-Configuration",
-      desc: "Point MCP Anywhere at any GitHub repository and Claude AI automatically analyzes and configures the MCP server for you."
+      desc: "Paste a GitHub MCP server URL; the setup flow reads the repo and generates the server entry for your gateway."
     },
     {
       icon: <Lock className="w-6 h-6 text-brand-600" />,
@@ -43,10 +43,10 @@ export const Features: React.FC = () => {
       <Container>
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-2 text-neutral-900">
-            Everything you need to scale MCP
+            One gateway, many MCP servers
           </h2>
           <p className="text-lg text-neutral-600">
-            Built for developers who need reliable, secure, and fast connections between their AI models and data sources.
+            For anyone wiring local tools, internal APIs, and data into MCP without shipping context to a vendor.
           </p>
         </div>
 

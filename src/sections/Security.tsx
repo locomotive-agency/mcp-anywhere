@@ -11,7 +11,7 @@ export const Security: React.FC = () => {
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-black text-xs font-bold uppercase tracking-wider mb-6 border border-brand-500">
               <ShieldCheck size={14} />
-              Enterprise Security
+              Your stack, your boundaries
             </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-neutral-900">
               Your data never leaves your infrastructure
