@@ -46,7 +46,7 @@ export const Hero: React.FC = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in delay-300">
               <Button size="lg" href="#get-started">
-                Quick start <ArrowRight size={18} />
+                Try it today <ArrowRight size={18} />
               </Button>
               <Button size="lg" variant="outline" href="https://github.com/locomotive-agency/mcp-anywhere" target="_blank">
                 <Github size={18} /> Star on GitHub
