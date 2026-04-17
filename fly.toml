@@ -1,0 +1,44 @@
+app = "luxury-wool-protegee-staging"
+primary_region = "iad"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DATA_DIR = "/.data"
+  DOCKER_HOST = "unix:///var/run/docker.sock"
+  GOOGLE_OAUTH_REDIRECT_URI = "/auth/callback"
+  LOG_LEVEL = "DEBUG"
+  MCP_PATH = "/mcp"
+  OAUTH_USER_ALLOWED_DOMAIN = "locomotive.agency"
+  SERVER_URL = "https://luxury-wool-protegee-staging.fly.dev"
+  START_SERVERS_ON_LAUNCH = "false"
+  WEB_PORT = "8000"
+
+[processes]
+  app = "python -m mcp_anywhere serve http"
+
+[[mounts]]
+  source = "mcp_anywhere_data_staging"
+  destination = "/.data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+
+[[vm]]
+  memory = "4gb"
+  cpu_kind = "shared"
+  cpus = 2

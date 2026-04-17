@@ -13,6 +13,16 @@
     <meta name="twitter:title" content="MCP Anywhere - Unified Gateway for Model Context Protocol" />
     <meta name="twitter:description" content="Self-hosted open-source MCP gateway. Run it on your stack; wire Claude Desktop and other MCP clients to your tools." />
     <title>MCP Anywhere - Unified Gateway for Model Context Protocol</title>
+    <script type="text/javascript">
+      (function(l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search.slice(1).split('&').map(function(s) {
+            return s.replace(/~and~/g, '&');
+          }).join('?');
+          window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash);
+        }
+      }(window.location));
+    </script>
   </head>
   <body>
     <div id="root"></div>
