@@ -181,3 +181,4 @@ mcp_simple_auth/
 vendor/
 fly.toml
 fly.staging.toml
+node_modules/

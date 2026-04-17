@@ -3,35 +3,35 @@
 {% block title %}Instance Settings - MCP Anywhere{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
+<div>
     <div class="mb-6">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Instance Settings</h1>
-                <p class="mt-2 text-gray-600">Configure instance-wide settings for MCP Anywhere</p>
+                <h1 class="text-2xl sm:text-3xl font-bold" style="color: var(--text-primary);">Instance Settings</h1>
+                <p class="mt-2" style="color: var(--text-secondary);">Configure instance-wide settings for MCP Anywhere</p>
             </div>
         </div>
     </div>
     {% if request.query_params.get('success') %}
-    <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+    <div class="p-4 mb-6 rounded-md" style="background-color: var(--color-brand-50); border-left: 4px solid var(--brand-primary);">
         <div class="flex">
             <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg class="h-5 w-5" style="color: var(--brand-primary);" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                 </svg>
             </div>
             <div class="ml-3">
-                <p class="text-sm text-green-700">{{ request.query_params.get('success') }}</p>
+                <p class="text-sm" style="color: var(--color-brand-800);">{{ request.query_params.get('success') }}</p>
             </div>
         </div>
     </div>
     {% endif %}
 
     {% if request.query_params.get('error') or error %}
-    <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+    <div class="p-4 mb-6 rounded-md" style="background-color: #FEF2F2; border-left: 4px solid #EF4444;">
         <div class="flex">
             <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                 </svg>
             </div>
@@ -44,19 +44,19 @@
     <form method="POST" action="/admin/settings/update" class="space-y-6">
         {% if settings_by_category %}
             {% for category, settings in settings_by_category.items() %}
-            <div class="bg-white rounded-lg shadow">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ category }}</h3>
+            <div class="ds-card">
+                <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-default);">
+                    <h3 class="text-lg font-semibold" style="color: var(--text-primary);">{{ category }}</h3>
                 </div>
                 <div class="px-6 py-4 space-y-6">
                     {% for setting in settings %}
-                    <div class="flex items-start justify-between pb-6 {% if not loop.last %}border-b border-gray-100{% endif %}">
+                    <div class="flex items-start justify-between pb-6" {% if not loop.last %}style="border-bottom: 1px solid var(--color-neutral-100);"{% endif %}>
                         <div class="flex-1 pr-8">
-                            <label for="setting_{{ setting.key }}" class="block text-sm font-medium text-gray-900 mb-1">
+                            <label for="setting_{{ setting.key }}" class="block text-sm font-medium mb-1" style="color: var(--text-primary);">
                                 {{ setting.label }}
                             </label>
                             {% if setting.description %}
-                            <p class="text-sm text-gray-500 mb-3">{{ setting.description }}</p>
+                            <p class="text-sm mb-3" style="color: var(--text-muted);">{{ setting.description }}</p>
                             {% endif %}
                             {% if setting.value_type == 'boolean' %}
                                 <div class="flex items-center">
@@ -64,15 +64,15 @@
                                            id="setting_{{ setting.key }}"
                                            name="setting_{{ setting.key }}"
                                            {% if setting.value == 'true' %}checked{% endif %}
-                                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                    <label for="setting_{{ setting.key }}" class="ml-2 text-sm text-gray-700">
+                                           class="h-4 w-4 rounded ds-input" style="accent-color: var(--brand-primary);">
+                                    <label for="setting_{{ setting.key }}" class="ml-2 text-sm" style="color: var(--text-secondary);">
                                         Enable
                                     </label>
                                 </div>
                             {% elif setting.value_type == 'select' %}
                                 <select id="setting_{{ setting.key }}"
                                         name="setting_{{ setting.key }}"
-                                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        class="ds-input mt-1 block w-full sm:text-sm">
                                     {% for option in settings_options.get(setting.key, []) %}
                                     <option value="{{ option }}" {% if setting.value == option %}selected{% endif %}>
                                         {{ option }}
@@ -84,18 +84,18 @@
                                        id="setting_{{ setting.key }}"
                                        name="setting_{{ setting.key }}"
                                        value="{{ setting.value }}"
-                                       class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                       class="ds-input w-full">
                             {% else %}
                                 <input type="text"
                                        id="setting_{{ setting.key }}"
                                        name="setting_{{ setting.key }}"
                                        value="{{ setting.value }}"
-                                       class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                       class="ds-input w-full"
                                        {% if setting.key == 'oauth_user_allowed_domain' %}placeholder="example.com"{% endif %}>
                             {% endif %}
 
                             {% if setting.updated_by %}
-                            <p class="mt-2 text-xs text-gray-400">
+                            <p class="mt-2 text-xs" style="color: var(--text-muted);">
                                 Last updated by {{ setting.updated_by }}
                                 {% if setting.updated_at %}
                                 on {{ setting.updated_at.strftime('%Y-%m-%d %H:%M') }}
@@ -109,14 +109,14 @@
             </div>
             {% endfor %}
         {% else %}
-            <div class="bg-white rounded-lg shadow p-6">
+            <div class="ds-card">
                 <div class="text-center py-8">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="mx-auto h-12 w-12" style="color: var(--text-muted);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    <h3 class="mt-4 text-lg font-medium text-gray-900">No settings found</h3>
-                    <p class="mt-2 text-sm text-gray-500">Settings will be initialized when first accessed.</p>
+                    <h3 class="mt-4 text-lg font-medium" style="color: var(--text-primary);">No settings found</h3>
+                    <p class="mt-2 text-sm" style="color: var(--text-muted);">Settings will be initialized when first accessed.</p>
                 </div>
             </div>
         {% endif %}
@@ -124,7 +124,7 @@
         <!-- Action Buttons -->
         <div class="flex items-center justify-between pt-4">
             <a href="/"
-               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+               class="btn-neutral inline-flex items-center px-4 py-2 text-sm font-medium">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
@@ -134,7 +134,7 @@
             {% if settings_by_category %}
             <div class="flex space-x-3">
                 <button type="submit"
-                        class="btn-primary inline-flex items-center px-6 py-2 rounded-lg transition-colors shadow-md hover:shadow-lg">
+                        class="btn-primary inline-flex items-center px-6 py-2">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>

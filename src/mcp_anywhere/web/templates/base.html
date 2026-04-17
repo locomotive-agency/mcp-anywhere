@@ -9,125 +9,141 @@
     <link rel="stylesheet" href="/static/app.css">
     <meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
 </head>
-<body class="bg-gray-50">
-    <nav class="bg-white shadow-md border-b border-gray-200">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <a href="/" class="flex items-center logo-container">
-                        <img src="/static/MCPanywhere.svg" alt="MCP Anywhere" class="logo-svg">
-                    </a>
-                </div>
-                
-                <!-- Mobile Menu -->
-                <div class="flex items-center space-x-2 sm:hidden">
-                    <a href="/servers/add" class="btn-primary inline-flex items-center px-3 py-2 rounded-lg transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        <span class="ml-1">Add</span>
-                    </a>
-                    <button class="mobile-menu-toggle p-2 text-gray-600 hover:text-gray-900" onclick="toggleMobileMenu()">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                        </svg>
-                    </button>
-                </div>
-                
-                <!-- Desktop Menu -->
-                <div class="hidden sm:flex items-center space-x-6">
-                    <a href="/" class="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        Dashboard
-                    </a>
-                    {% if current_user is defined and current_user.is_admin %}
-                    <a href="/admin/users" class="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        Users
-                    </a>
-                    <a href="/admin/settings" class="text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        Settings
-                    </a>
-                    {% endif %}
-                    <a href="/servers/add" class="btn-primary inline-flex items-center px-4 py-2 rounded-lg transition-colors shadow-md hover:shadow-lg">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Add Server
-                    </a>
-                    {% if current_user is defined and current_user.is_authenticated %}
-                    <div class="flex items-center space-x-3">
-                        <span class="text-sm text-gray-500">{{ current_user.username }}</span>
-                        <form method="POST" action="/auth/logout" class="inline">
-                            <button type="submit"
-                                    class="inline-flex items-center text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
+<body class="ds-page app-layout">
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="/" class="flex items-center logo-container">
+                <img src="/static/MCPanywhere.svg" alt="MCP Anywhere" class="logo-svg">
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="sidebar-nav-item {% if request.url.path == '/' %}sidebar-active{% endif %}">
+                <span class="sidebar-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></span>
+                <span class="sidebar-nav-label">Dashboard</span>
+            </a>
+            <a href="/servers/add" class="sidebar-nav-item {% if request.url.path == '/servers/add' %}sidebar-active{% endif %}">
+                <span class="sidebar-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg></span>
+                <span class="sidebar-nav-label">Add Server</span>
+            </a>
+            {% if current_user is defined and current_user.is_admin %}
+            <a href="/admin/users" class="sidebar-nav-item {% if request.url.path.startswith('/admin/users') %}sidebar-active{% endif %}">
+                <span class="sidebar-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></span>
+                <span class="sidebar-nav-label">Users</span>
+            </a>
+            <a href="/admin/settings" class="sidebar-nav-item {% if request.url.path.startswith('/admin/settings') %}sidebar-active{% endif %}">
+                <span class="sidebar-nav-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></span>
+                <span class="sidebar-nav-label">Settings</span>
+            </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <div class="main-wrap">
+        <header class="topbar">
+            <div class="ds-container topbar__container" style="padding-top: 0; padding-bottom: 0;">
+                <div class="topbar__inner">
+                <div class="flex justify-between items-center" style="height: 4rem;">
+                    <!-- Mobile: logo only. Desktop: user/type on the left -->
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex items-center md:hidden">
+                            <a href="/" class="flex items-center logo-container">
+                                <img src="/static/MCPanywhere.svg" alt="MCP Anywhere" class="logo-svg">
+                            </a>
+                        </div>
+                        {% if current_user is defined and current_user.is_authenticated %}
+                        <div class="hidden md:flex items-center gap-2">
+                            <!-- <span class="text-sm font-medium truncate" style="color: var(--text-primary);">{{ current_user.username }}</span> -->
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {% if current_user.is_admin %}badge-brand{% else %}badge-neutral{% endif %}">
+                                {{ (current_user.role or 'user')|title }}
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <!-- Desktop: Add Server + Login/Logout on the right. Mobile: Add + menu -->
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <div class="hidden md:block">
+                            <a href="/servers/add" class="btn-primary inline-flex items-center px-4 py-2">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                Add Server
+                            </a>
+                        </div>
+                        {% if current_user is defined and current_user.is_authenticated %}
+                        <form method="POST" action="/auth/logout" class="inline hidden md:block">
+                            <button type="submit" class="btn-outline inline-flex items-center px-4 py-2">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                                 Logout
                             </button>
                         </form>
+                        {% else %}
+                        <a href="/auth/login" class="hidden md:inline-flex btn-primary items-center px-4 py-2">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                            Login
+                        </a>
+                        {% endif %}
+                        <div class="flex items-center md:hidden">
+                            <a href="/servers/add" class="btn-primary inline-flex items-center px-3 py-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg><span class="ml-1">Add</span></a>
+                            <button type="button" class="mobile-menu-toggle p-2 link-nav" style="color: var(--text-secondary);" onclick="toggleMobileMenu()" aria-label="Toggle menu">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                            </button>
+                        </div>
                     </div>
-                    {% else %}
-                    <a href="/auth/login" class="inline-flex items-center text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                        </svg>
-                        Login
-                    </a>
+                </div>
+                <div id="mobile-menu" class="mobile-menu hidden md:hidden">
+                    {% if current_user is defined and current_user.is_authenticated %}
+                    <div class="mobile-menu__user">
+                        <!-- <span class="mobile-menu__user-name">{{ current_user.username }}</span> -->
+                        <span class="mobile-menu__user-role {% if current_user.is_admin %}badge-brand{% else %}badge-neutral{% endif %}">{{ (current_user.role or 'user')|title }}</span>
+                    </div>
                     {% endif %}
+                    <nav class="mobile-menu__nav">
+                        <a href="/" class="mobile-menu__item {% if request.url.path == '/' %}mobile-menu__item--active{% endif %}">
+                            <span class="mobile-menu__icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg></span>
+                            <span class="mobile-menu__label">Dashboard</span>
+                        </a>
+                        <a href="/servers/add" class="mobile-menu__item {% if request.url.path == '/servers/add' %}mobile-menu__item--active{% endif %}">
+                            <span class="mobile-menu__icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg></span>
+                            <span class="mobile-menu__label">Add Server</span>
+                        </a>
+                        {% if current_user is defined and current_user.is_admin %}
+                        <a href="/admin/users" class="mobile-menu__item {% if request.url.path.startswith('/admin/users') %}mobile-menu__item--active{% endif %}">
+                            <span class="mobile-menu__icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></span>
+                            <span class="mobile-menu__label">Users</span>
+                        </a>
+                        <a href="/admin/settings" class="mobile-menu__item {% if request.url.path.startswith('/admin/settings') %}mobile-menu__item--active{% endif %}">
+                            <span class="mobile-menu__icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></span>
+                            <span class="mobile-menu__label">Settings</span>
+                        </a>
+                        {% endif %}
+                    </nav>
+                    <div class="mobile-menu__actions">
+                        {% if current_user is defined and current_user.is_authenticated %}
+                        <form method="POST" action="/auth/logout" class="mobile-menu__form">
+                            <button type="submit" class="mobile-menu__item mobile-menu__item--logout">
+                                <span class="mobile-menu__icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg></span>
+                                <span class="mobile-menu__label">Logout</span>
+                            </button>
+                        </form>
+                        {% else %}
+                        <a href="/auth/login" class="mobile-menu__item mobile-menu__item--primary">
+                            <span class="mobile-menu__icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg></span>
+                            <span class="mobile-menu__label">Login</span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
                 </div>
             </div>
-            
-            <!-- Mobile Menu Dropdown -->
-            <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-200 py-3">
-                <div class="space-y-3">
-                    {% if current_user is defined and current_user.is_authenticated %}
-                    <div class="px-3 pb-2 mb-2 border-b border-gray-200">
-                        <span class="text-sm text-gray-500">{{ current_user.username }}</span>
-                    </div>
-                    {% endif %}
-                    <a href="/" class="block text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        Dashboard
-                    </a>
-                    {% if current_user is defined and current_user.is_admin %}
-                    <a href="/admin/users" class="block text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        Users
-                    </a>
-                    <a href="/admin/settings" class="block text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        Settings
-                    </a>
-                    {% endif %}
-                    {% if current_user is defined and current_user.is_authenticated %}
-                    <form method="POST" action="/auth/logout" class="inline">
-                        <button type="submit"
-                                class="flex items-center text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                            </svg>
-                            Logout
-                        </button>
-                    </form>
-                    {% else %}
-                    <a href="/auth/login" class="flex items-center text-gray-600 hover:text-gray-900 font-medium transition-colors">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
-                        </svg>
-                        Login
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
+        </header>
 
-    <main class="max-w-6xl mx-auto py-6 px-4">
-        {# Flash messages - will be implemented later if needed #}
+        <main class="ds-container flex-1" style="padding-top: var(--space-6); padding-bottom: var(--space-6);">
+            {% block content %}{% endblock %}
+        </main>
 
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="mt-auto py-6 px-4 text-center text-gray-500 text-sm">
-                    <p class="break-words">MCP Anywhere - Unified gateway for Model Context Protocol servers</p>
-    </footer>
+        <footer class="mt-auto py-6 px-4 text-center text-sm" style="background-color: transparent; color: var(--text-muted); border-top: 1px solid var(--border-default);">
+            <p class="break-words">MCP Anywhere - Unified gateway for Model Context Protocol servers</p>
+        </footer>
+    </div>
 
     {% block scripts %}
     <script>

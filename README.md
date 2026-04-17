@@ -343,6 +343,8 @@ uv run pytest
 # Run tests with coverage
 uv run pytest --cov=mcp_anywhere
 ```
+### 
+   uv run mcp-anywhere serve http --host 0.0.0.0 --port 8080
 
 ### Debug Mode
 ```bash

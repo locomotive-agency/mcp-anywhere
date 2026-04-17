@@ -5,71 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Login - MCP Anywhere{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/app.css">
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto max-w-md mt-8">
-        <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <h2 class="text-2xl font-bold mb-6 text-center">Login to MCP Anywhere</h2>
-            
+<body class="login-page">
+    <div class="login-page__inner">
+        <div class="login-page__card">
+            <div class="login-page__logo">
+                <a href="/">
+                    <img src="/static/MCPanywhere.svg" alt="MCP Anywhere">
+                </a>
+            </div>
+            <h1 class="login-page__title">Welcome back</h1>
+            <p class="login-page__subtitle">Sign in to manage your MCP servers</p>
+
             {% if error %}
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div class="login-page__error" role="alert">
                 {{ error }}
             </div>
             {% endif %}
-            
-            <form method="post" action="/auth/login">
+
+            <form method="post" action="/auth/login" class="login-page__form">
                 {% if next_url %}
                 <input type="hidden" name="next" value="{{ next_url }}">
                 {% endif %}
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
-                        Username
-                    </label>
-                    <input 
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                        id="username" 
-                        name="username" 
-                        type="text" 
-                        placeholder="Username"
+                <div class="login-page__field">
+                    <label for="username">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        placeholder="Enter your username"
                         value="{{ username or '' }}"
                         required
+                        autocomplete="username"
                     >
                 </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
-                        Password
-                    </label>
-                    <input 
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" 
-                        id="password" 
-                        name="password" 
-                        type="password" 
-                        placeholder="Password"
+                <div class="login-page__field">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
                         required
+                        autocomplete="current-password"
                     >
                 </div>
-                <div class="flex items-center justify-between mb-8">
-                    <button 
-                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" 
-                        type="submit"
-                    >
-                        Sign In
+                <div class="login-page__actions">
+                    <button type="submit" class="login-page__submit">
+                        Sign in
                     </button>
-                    <a class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="/">
-                        Back to Home
-                    </a>
+                    <a href="/" class="login-page__back">Back to Home</a>
                 </div>
             </form>
+
             {% if google_oauth %}
+            <div class="login-page__divider">or</div>
             <form method="post" action="/auth/google">
-                <div class="flex items-center justify-between mb-6">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold px-5 py-2.5 text-center inline-flex items-center justify-between mr-2 mb-2 rounded focus:outline-none focus:shadow-outline" type="submit">
-                    <svg class="mr-2 -ml-1 w-4 h-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-                        <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+                <button type="submit" class="login-page__oauth">
+                    <svg aria-hidden="true" focusable="false" viewBox="0 0 488 512" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"/>
                     </svg>
                     Sign in with Google
-                    </button>
-                </div>
+                </button>
             </form>
             {% endif %}
         </div>
