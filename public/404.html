@@ -4,11 +4,15 @@
     <meta charset="utf-8">
     <title>MCP Anywhere</title>
     <script type="text/javascript">
+      var pathSegmentsToKeep = 1;
       var l = window.location;
+      var segments = l.pathname.split('/');
+      var base = segments.slice(0, 1 + pathSegmentsToKeep).join('/');
+      var rest = segments.slice(1 + pathSegmentsToKeep).join('/');
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        '/?/' +
-        l.pathname.slice(1).replace(/&/g, '~and~') +
+        base + '/?/' +
+        rest.replace(/&/g, '~and~') +
         (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
         l.hash
       );
