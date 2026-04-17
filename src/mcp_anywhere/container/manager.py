@@ -365,21 +365,13 @@ class ContainerManager:
         try:
             # Use shlex to properly parse the command
             parts = shlex.split(cmd)
-
-            if server.runtime_type in ["npx", "uvx"]:
-                # For stdio-based servers, ensure stdio transport is specified
-                if "stdio" not in parts:
-                    parts.append("stdio")
-                return parts
-            else:
-                # For other types, return parsed command as-is
-                return parts
-
         except ValueError as e:
             # shlex parsing failed (e.g., unmatched quotes)
             logger.exception(f"Failed to parse command '{cmd}': {e}")
             # Fall back to simple split
-            return cmd.split()
+            parts = cmd.split()
+
+        return parts
 
     def build_server_image(self, server: MCPServer) -> str:
         """Build a Docker image for an MCP server with dependencies pre-installed."""
