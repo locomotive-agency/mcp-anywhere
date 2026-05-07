@@ -86,6 +86,10 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
         "init_timeout": 15,  # Add a 15-second initialization timeout
     }
 
+    logger.debug(
+        "docker run args for server %s: %s", server.name, new_config["args"]
+    )
+
     return {"new": new_config, "existing": existing_config}
 
 

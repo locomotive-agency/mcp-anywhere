@@ -170,25 +170,45 @@ class SecureFileManager:
                 continue
 
             stored_path = server_dir / secret_file.stored_filename
-            if stored_path.exists():
-                # Decrypt file to a temporary location for container mounting
-                decrypted_content = self.retrieve_file(
-                    server_id, secret_file.stored_filename
+            if not stored_path.is_file():
+                raise FileNotFoundError(
+                    f"Secret file '{secret_file.original_filename}' for server "
+                    f"{server_id} is missing on disk at {stored_path}. The "
+                    f"database row is active but the encrypted content is gone "
+                    f"— re-upload the file to fix this."
                 )
 
-                # Create a temporary unencrypted file for container mounting
-                temp_filename = f"temp_{secret_file.stored_filename}"
-                temp_path = server_dir / temp_filename
+            # Decrypt file to a temporary location for container mounting
+            decrypted_content = self.retrieve_file(
+                server_id, secret_file.stored_filename
+            )
 
-                with open(temp_path, "wb") as f:
-                    f.write(decrypted_content)
+            # Create a temporary unencrypted file for container mounting
+            temp_filename = f"temp_{secret_file.stored_filename}"
+            temp_path = server_dir / temp_filename
 
-                os.chmod(temp_path, 0o600)
+            # Defensive: if a stale directory exists at temp_path (e.g. from a
+            # previous failed run where Docker auto-created one), remove it so
+            # the open() below produces a regular file.
+            if temp_path.is_dir():
+                shutil.rmtree(temp_path)
 
-                # Map to container path
-                container_path = self.get_container_file_path(
-                    secret_file.original_filename
+            with open(temp_path, "wb") as f:
+                f.write(decrypted_content)
+
+            os.chmod(temp_path, 0o600)
+
+            if not temp_path.is_file():
+                raise RuntimeError(
+                    f"Prepared secret file is not a regular file: {temp_path}. "
+                    f"Refusing to bind-mount it because Docker would silently "
+                    f"create a directory at the destination path."
                 )
-                container_files[str(temp_path)] = container_path
+
+            # Map to container path
+            container_path = self.get_container_file_path(
+                secret_file.original_filename
+            )
+            container_files[str(temp_path)] = container_path
 
         return container_files
