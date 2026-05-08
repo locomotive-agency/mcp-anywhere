@@ -40,6 +40,19 @@ class Config:
     SECRETS_DIR = DATA_DIR / "secrets"
     SECRETS_DIR.mkdir(exist_ok=True)
 
+    # Host-side path that DATA_DIR maps to. Only relevant when MCP Anywhere
+    # runs inside a container talking to a sibling (host) docker daemon: bind
+    # mounts in spawned MCP-server containers must reference the host path of
+    # any file written under DATA_DIR, not the in-container path.
+    #
+    # Leave unset (None) when:
+    #  - MCP Anywhere runs natively on the host, or
+    #  - DinD setup where the daemon shares the app's filesystem.
+    #
+    # If unset, ContainerManager will attempt to auto-detect the mapping by
+    # inspecting its own container via the docker socket.
+    HOST_DATA_DIR = os.environ.get("HOST_DATA_DIR")
+
     # Session settings
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
     SESSION_MAX_AGE = int(os.environ.get("SESSION_MAX_AGE", "28800"))  # 8 hours default

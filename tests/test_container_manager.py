@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from unittest.mock import MagicMock, patch
 from docker.errors import APIError, ImageNotFound, NotFound
@@ -459,3 +461,122 @@ class TestMultipleContainers:
         assert tag1 != tag2
         assert "server-1" in tag1
         assert "server-2" in tag2
+
+
+class TestHostPathTranslation:
+    """Bind sources for spawned MCP servers must use host paths when MCP
+    Anywhere talks to a sibling docker daemon."""
+
+    def test_explicit_host_data_dir_override_wins(
+        self, container_manager, mock_docker_client
+    ):
+        with patch("mcp_anywhere.container.manager.Config") as mock_cfg:
+            mock_cfg.HOST_DATA_DIR = "/mcp-anywhere-data"
+            mock_cfg.DATA_DIR = Path("/app/.data")
+            container_manager._host_data_dir_cache = "unset"
+
+            translated = container_manager.translate_to_host_path(
+                "/app/.data/secrets/abc/temp_xyz.json"
+            )
+
+        assert translated == "/mcp-anywhere-data/secrets/abc/temp_xyz.json"
+        mock_docker_client.containers.get.assert_not_called()
+
+    def test_auto_detects_via_self_inspect(
+        self, container_manager, mock_docker_client
+    ):
+        mock_self_container = MagicMock()
+        mock_self_container.attrs = {
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/mcp-anywhere-data",
+                    "Destination": "/app/.data",
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/var/run/docker.sock",
+                    "Destination": "/var/run/docker.sock",
+                },
+            ]
+        }
+        mock_docker_client.containers.get.return_value = mock_self_container
+
+        with patch("mcp_anywhere.container.manager.Config") as mock_cfg:
+            mock_cfg.HOST_DATA_DIR = None
+            mock_cfg.DATA_DIR = Path("/app/.data")
+            container_manager._host_data_dir_cache = "unset"
+
+            translated = container_manager.translate_to_host_path(
+                "/app/.data/secrets/abc/temp_xyz.json"
+            )
+
+        assert translated == "/mcp-anywhere-data/secrets/abc/temp_xyz.json"
+
+    def test_returns_path_unchanged_when_no_mapping_found(
+        self, container_manager, mock_docker_client
+    ):
+        mock_self_container = MagicMock()
+        mock_self_container.attrs = {"Mounts": []}
+        mock_docker_client.containers.get.return_value = mock_self_container
+
+        with patch("mcp_anywhere.container.manager.Config") as mock_cfg:
+            mock_cfg.HOST_DATA_DIR = None
+            mock_cfg.DATA_DIR = Path("/app/.data")
+            container_manager._host_data_dir_cache = "unset"
+
+            translated = container_manager.translate_to_host_path(
+                "/app/.data/secrets/abc/temp_xyz.json"
+            )
+
+        assert translated == "/app/.data/secrets/abc/temp_xyz.json"
+
+    def test_path_outside_data_dir_passes_through(
+        self, container_manager, mock_docker_client
+    ):
+        with patch("mcp_anywhere.container.manager.Config") as mock_cfg:
+            mock_cfg.HOST_DATA_DIR = "/mcp-anywhere-data"
+            mock_cfg.DATA_DIR = Path("/app/.data")
+            container_manager._host_data_dir_cache = "unset"
+
+            translated = container_manager.translate_to_host_path(
+                "/etc/something-else.json"
+            )
+
+        assert translated == "/etc/something-else.json"
+
+    def test_inspect_failure_falls_back_to_no_translation(
+        self, container_manager, mock_docker_client
+    ):
+        mock_docker_client.containers.get.side_effect = NotFound("nope")
+
+        with patch("mcp_anywhere.container.manager.Config") as mock_cfg:
+            mock_cfg.HOST_DATA_DIR = None
+            mock_cfg.DATA_DIR = Path("/app/.data")
+            container_manager._host_data_dir_cache = "unset"
+
+            translated = container_manager.translate_to_host_path(
+                "/app/.data/secrets/abc/temp_xyz.json"
+            )
+
+        assert translated == "/app/.data/secrets/abc/temp_xyz.json"
+
+    def test_result_is_cached(self, container_manager, mock_docker_client):
+        mock_self_container = MagicMock()
+        mock_self_container.attrs = {
+            "Mounts": [
+                {"Source": "/mcp-anywhere-data", "Destination": "/app/.data"},
+            ]
+        }
+        mock_docker_client.containers.get.return_value = mock_self_container
+
+        with patch("mcp_anywhere.container.manager.Config") as mock_cfg:
+            mock_cfg.HOST_DATA_DIR = None
+            mock_cfg.DATA_DIR = Path("/app/.data")
+            container_manager._host_data_dir_cache = "unset"
+
+            container_manager.translate_to_host_path("/app/.data/a")
+            container_manager.translate_to_host_path("/app/.data/b")
+            container_manager.translate_to_host_path("/app/.data/c")
+
+        assert mock_docker_client.containers.get.call_count == 1

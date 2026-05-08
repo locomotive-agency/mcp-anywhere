@@ -9,6 +9,8 @@ import json
 import os
 import re
 import shlex
+import socket
+from pathlib import Path
 from typing import Any, Optional
 
 import docker
@@ -45,6 +47,90 @@ class ContainerManager:
         self.reused_containers = set()
         # Secure file manager for handling secret files
         self.file_manager = SecureFileManager()
+        # Cache for the host-side DATA_DIR mapping (see _detect_host_data_dir).
+        self._host_data_dir_cache: Path | None | str = "unset"
+
+    def _detect_host_data_dir(self) -> Path | None:
+        """Detect the host path that DATA_DIR maps to.
+
+        When MCP Anywhere runs as a sibling container talking to the host
+        docker daemon (e.g. with /var/run/docker.sock bind-mounted in), bind
+        mounts on spawned MCP-server containers are resolved by the host
+        daemon against the host's filesystem — not the app container's. So we
+        need to translate any in-container path under DATA_DIR back to its
+        host-side path before passing it as a bind source.
+
+        Resolution order:
+        1. Explicit Config.HOST_DATA_DIR override (env var).
+        2. Auto-detect by inspecting our own container's mounts via the docker
+           socket. We find the mount whose Destination is DATA_DIR and use its
+           Source as the host path.
+        3. Return None — meaning no translation; caller passes paths through
+           as-is. This is correct for native deploys and DinD.
+        """
+        if self._host_data_dir_cache != "unset":
+            return self._host_data_dir_cache  # type: ignore[return-value]
+
+        # Explicit override always wins.
+        if Config.HOST_DATA_DIR:
+            host_path = Path(Config.HOST_DATA_DIR)
+            logger.debug("Using HOST_DATA_DIR override: %s", host_path)
+            self._host_data_dir_cache = host_path
+            return host_path
+
+        # Auto-detect via docker inspect of our own container.
+        try:
+            container_id = socket.gethostname()
+            container = self.docker_client.containers.get(container_id)
+            data_dir_str = str(Config.DATA_DIR).rstrip("/")
+            for mount in container.attrs.get("Mounts", []):
+                dest = mount.get("Destination", "").rstrip("/")
+                if dest == data_dir_str:
+                    source = mount.get("Source")
+                    if source:
+                        host_path = Path(source)
+                        logger.info(
+                            "Auto-detected host DATA_DIR mapping: %s -> %s",
+                            Config.DATA_DIR,
+                            host_path,
+                        )
+                        self._host_data_dir_cache = host_path
+                        return host_path
+            logger.debug(
+                "No bind mount found at %s in container %s; assuming native "
+                "deploy or shared filesystem with daemon.",
+                Config.DATA_DIR,
+                container_id,
+            )
+        except (docker.errors.NotFound, APIError, OSError) as e:
+            logger.debug(
+                "Could not auto-detect host DATA_DIR mapping (%s); assuming "
+                "no translation needed.",
+                e,
+            )
+
+        self._host_data_dir_cache = None
+        return None
+
+    def translate_to_host_path(self, container_path: str | os.PathLike) -> str:
+        """Translate a path inside DATA_DIR from app-container to host view.
+
+        If we're not running as a sibling container (or the path isn't under
+        DATA_DIR), the input is returned unchanged.
+        """
+        host_data_dir = self._detect_host_data_dir()
+        if host_data_dir is None:
+            return str(container_path)
+
+        try:
+            relative = Path(container_path).resolve().relative_to(
+                Path(Config.DATA_DIR).resolve()
+            )
+        except ValueError:
+            # Path isn't under DATA_DIR — leave it alone.
+            return str(container_path)
+
+        return str(host_data_dir / relative)
 
     def _check_docker_running(self) -> bool:
         """Check if the Docker daemon is running."""

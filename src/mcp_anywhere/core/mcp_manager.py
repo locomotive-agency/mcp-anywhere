@@ -61,8 +61,12 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
         file_manager = SecureFileManager()
         container_files = file_manager.prepare_container_files(server.id, secret_files)
 
-        for host_path, container_path in container_files.items():
-            volume_args.extend(["-v", f"{host_path}:{container_path}:ro"])
+        for source_path, container_path in container_files.items():
+            # If we're a sibling container talking to the host docker daemon,
+            # the daemon resolves bind sources against the host's filesystem,
+            # not ours — translate before passing to docker run.
+            host_source = container_manager.translate_to_host_path(source_path)
+            volume_args.extend(["-v", f"{host_source}:{container_path}:ro"])
 
     new_config = {
         "command": "docker",
