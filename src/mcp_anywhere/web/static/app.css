@@ -107,22 +107,23 @@
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   box-shadow: var(--shadow-card);
+}
+
+/* Hover animation only for explicitly clickable cards */
+.ds-card--clickable,
+a.ds-card,
+button.ds-card {
+  cursor: pointer;
   transition: transform var(--duration-normal) var(--easing-ease-out),
     box-shadow var(--duration-normal) var(--easing-ease-out),
     border-color var(--duration-normal) var(--easing-ease-out);
 }
-
-.ds-card:hover {
+.ds-card--clickable:hover,
+a.ds-card:hover,
+button.ds-card:hover {
   box-shadow: var(--shadow-lg);
   border-color: var(--border-highlight);
-}
-/* Optional: subtle lift only for standalone cards (e.g. empty state), not grid cards */
-.ds-card:not(.card-accent):hover {
   transform: translateY(-2px);
-}
-.grid .ds-card:hover,
-[class*="grid"] .ds-card:hover {
-  transform: none;
 }
 
 /* ============================================================
