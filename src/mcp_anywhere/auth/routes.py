@@ -214,8 +214,8 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
         user_profile = await oauth_provider.get_user_profile(access_token)
 
         if not await oauth_provider.user_has_domain_authorization(user_profile["email"]):
-            logger.error(f"User {user_profile["email"]} not part of authorized domain")
-            error_url = f"/auth/login?error=User {user_profile["email"]} not part of authorized domain"
+            logger.error(f"User {user_profile['email']} not part of authorized domain")
+            error_url = f"/auth/login?error=User {user_profile['email']} not part of authorized domain"
             if next_url != "/":
                 error_url += f"&next={next_url}"
             return RedirectResponse(url=error_url, status_code=302)
@@ -228,7 +228,7 @@ async def handle_oauth_callback_btn(request: Request) -> RedirectResponse:
             "role": google_user.role,
         })
 
-        logger.debug(f"Google User {user_profile["email"]} authenticated, redirecting to {next_url}")
+        logger.debug(f"Google User {user_profile['email']} authenticated, redirecting to {next_url}")
 
         return RedirectResponse(status_code=302, url=next_url)
     except HTTPException:

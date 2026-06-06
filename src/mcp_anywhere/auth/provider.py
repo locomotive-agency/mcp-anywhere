@@ -746,7 +746,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
                 detail="Failed to fetch Google OAuth user profile"
             )
 
-        logger.debug(f"google user {http_response.json()["email"]}")
+        logger.debug(f"google user {http_response.json()['email']}")
 
         self.google_cache[g_token] = http_response.json()
 
