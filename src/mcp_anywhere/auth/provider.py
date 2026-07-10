@@ -33,6 +33,19 @@ from mcp_anywhere.web.settings_routes import get_setting
 
 logger = get_logger(__name__)
 
+# Grant types supported by this authorization server
+SUPPORTED_GRANT_TYPES = ["authorization_code", "refresh_token"]
+
+
+def _refresh_token_expires_at() -> int | None:
+    """Compute the expiry timestamp for a newly issued refresh token.
+
+    Returns None (never expires) when REFRESH_TOKEN_EXPIRES_IN is 0.
+    """
+    if Config.REFRESH_TOKEN_EXPIRES_IN <= 0:
+        return None
+    return int(time.time()) + Config.REFRESH_TOKEN_EXPIRES_IN
+
 
 class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
     """OAuth 2.0 provider that integrates MCP SDK auth with our database with PKCE support."""
@@ -44,12 +57,17 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         self.db_session_factory = db_session_factory
         self.auth_codes = {}  # In-memory storage for demo, use DB in production
         self.access_tokens = {}  # Token storage
+        # Refresh token storage (token string -> RefreshToken)
+        self.refresh_tokens: dict[str, RefreshToken] = {}
         # Add in-memory client cache for immediate availability (single-user system)
         self.client_cache: dict[str, OAuthClientInformationFull] = {}
         # Storage for OAuth requests during authorization flow
         self.oauth_requests: dict[str, dict[str, Any]] = {}
         # Map access tokens to user IDs for user-specific filtering
         self.token_users: dict[str, str] = {}
+        # Map refresh tokens to user IDs so refreshed access tokens keep
+        # their user association
+        self.refresh_token_users: dict[str, str] = {}
 
     async def create_authorization_code(
         self,
@@ -134,14 +152,36 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         # The MCP SDK validates the code_verifier against the code_challenge before getting here
         # So we don't need to do PKCE validation again in the provider
 
-        # Generate access token
+        # Delete used authorization code
+        del self.auth_codes[code_string]
+
+        # Issue access + refresh token pair
+        return self._issue_token_pair(
+            client_id=client.client_id,
+            scopes=auth_code_data["scope"].split(),
+            user_id=auth_code_data["user_id"],
+        )
+
+    def _issue_token_pair(
+        self, client_id: str, scopes: list[str], user_id: str
+    ) -> OAuthToken:
+        """Issue a new access/refresh token pair and store them.
+
+        Args:
+            client_id: OAuth client the tokens are issued to
+            scopes: Scopes granted to the tokens
+            user_id: ID of the user the tokens act on behalf of
+
+        Returns:
+            OAuthToken response containing both tokens
+        """
         token = secrets.token_urlsafe(32)
-        expires_at = int(time.time() + 3600)  # 1 hour
+        expires_at = int(time.time()) + Config.ACCESS_TOKEN_EXPIRES_IN
 
         access_token = AccessToken(
             token=token,
-            client_id=client.client_id,
-            scopes=auth_code_data["scope"].split(),
+            client_id=client_id,
+            scopes=scopes,
             expires_at=expires_at,
             resource=f"{Config.SERVER_URL}{Config.MCP_PATH_PREFIX}",
         )
@@ -150,17 +190,26 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         self.access_tokens[token] = access_token
 
         # Store user_id mapping for this token
-        self.token_users[token] = auth_code_data["user_id"]
+        self.token_users[token] = user_id
 
-        # Delete used authorization code
-        del self.auth_codes[code_string]
+        # Issue refresh token so clients can renew access without
+        # re-running the interactive authorization flow
+        refresh_token_str = secrets.token_urlsafe(32)
+        self.refresh_tokens[refresh_token_str] = RefreshToken(
+            token=refresh_token_str,
+            client_id=client_id,
+            scopes=scopes,
+            expires_at=_refresh_token_expires_at(),
+        )
+        self.refresh_token_users[refresh_token_str] = user_id
 
         # Return OAuthToken for MCP SDK compatibility
         return OAuthToken(
             access_token=token,
             token_type="Bearer",
-            expires_in=3600,
-            scope=" ".join(access_token.scopes),
+            expires_in=Config.ACCESS_TOKEN_EXPIRES_IN,
+            scope=" ".join(scopes),
+            refresh_token=refresh_token_str,
         )
 
     async def introspect_token(self, token: str) -> AccessToken | None:
@@ -185,14 +234,19 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
     async def revoke_token(
         self, token: str, token_type_hint: str | None = None
     ) -> bool:
-        """Revoke an access token."""
+        """Revoke an access or refresh token."""
+        revoked = False
         if token in self.access_tokens:
             del self.access_tokens[token]
             # Clean up user mapping
             if token in self.token_users:
                 del self.token_users[token]
-            return True
-        return False
+            revoked = True
+        if token in self.refresh_tokens:
+            del self.refresh_tokens[token]
+            self.refresh_token_users.pop(token, None)
+            revoked = True
+        return revoked
 
     def get_user_id_from_token(self, token: str) -> str | None:
         """Get the user_id associated with an access token.
@@ -232,6 +286,16 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
                 return None
 
             # Convert database model to MCP SDK model and cache it
+            grant_types = (
+                db_client.grant_types.split()
+                if db_client.grant_types
+                else list(SUPPORTED_GRANT_TYPES)
+            )
+            # Clients registered before refresh token support may have been
+            # stored with the bare default; allow them to refresh as well.
+            if grant_types == ["authorization_code"]:
+                grant_types = list(SUPPORTED_GRANT_TYPES)
+
             client_info = OAuthClientInformationFull(
                 client_id=db_client.client_id,
                 client_secret=(
@@ -239,7 +303,7 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
                 ),
                 client_name=db_client.client_name,
                 redirect_uris=[db_client.redirect_uri],
-                grant_types=["authorization_code"],
+                grant_types=grant_types,
                 response_types=["code"],
                 scope=db_client.scope,
             )
@@ -341,28 +405,74 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
             refresh_token: The refresh token to look up
 
         Returns:
-            RefreshToken object if found, None otherwise
+            RefreshToken object if found and valid, None otherwise
         """
-        # We don't currently support refresh tokens in this implementation
-        return None
+        token_data = self.refresh_tokens.get(refresh_token)
+        if not token_data:
+            return None
+
+        # Refresh tokens are bound to the client they were issued to
+        if token_data.client_id != client.client_id:
+            logger.warning(
+                f"Refresh token client mismatch: issued to {token_data.client_id}, "
+                f"presented by {client.client_id}"
+            )
+            return None
+
+        # Drop expired refresh tokens
+        if token_data.expires_at is not None and time.time() > token_data.expires_at:
+            del self.refresh_tokens[refresh_token]
+            self.refresh_token_users.pop(refresh_token, None)
+            return None
+
+        return token_data
 
     async def exchange_refresh_token(
-        self, client: OAuthClientInformationFull, refresh_token: RefreshToken
-    ) -> AccessToken:
-        """Exchange refresh token for new access token.
+        self,
+        client: OAuthClientInformationFull,
+        refresh_token: RefreshToken,
+        scopes: list[str],
+    ) -> OAuthToken:
+        """Exchange refresh token for a new access/refresh token pair.
+
+        Implements refresh token rotation (OAuth 2.1): the presented refresh
+        token is invalidated and a new one is returned with the new access
+        token.
 
         Args:
             client: The OAuth client
             refresh_token: The refresh token to exchange
+            scopes: Requested scopes (already validated by the MCP SDK token
+                handler to be a subset of the refresh token's scopes)
 
         Returns:
-            New AccessToken
+            OAuthToken response with a new access and refresh token
 
         Raises:
             TokenError: If refresh token is invalid
         """
-        # We don't currently support refresh tokens in this implementation
-        raise TokenError("unsupported_grant_type")
+        token_str = refresh_token.token
+        if token_str not in self.refresh_tokens:
+            raise TokenError("invalid_grant")
+
+        user_id = self.refresh_token_users.get(token_str)
+        if user_id is None:
+            # Mapping lost (e.g. inconsistent state) - treat as invalid
+            del self.refresh_tokens[token_str]
+            raise TokenError("invalid_grant")
+
+        # Rotate: invalidate the presented refresh token
+        del self.refresh_tokens[token_str]
+        del self.refresh_token_users[token_str]
+
+        new_scopes = scopes or refresh_token.scopes
+
+        logger.info(f"Refreshed tokens for client {client.client_id}")
+        return self._issue_token_pair(
+            client_id=client.client_id,
+            scopes=new_scopes,
+            user_id=user_id,
+        )
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         """Register a new OAuth client.
@@ -385,6 +495,7 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
         client_name = client_info.client_name or "Unknown Client"
         redirect_uris = [str(url) for url in (client_info.redirect_uris or [])]
         scope = client_info.scope or "mcp:read mcp:write"
+        grant_types = " ".join(client_info.grant_types or SUPPORTED_GRANT_TYPES)
 
         # Determine if client is confidential (has a secret)
         is_confidential = client_secret is not None
@@ -396,6 +507,7 @@ class MCPAnywhereAuthProvider(OAuthAuthorizationServerProvider):
                 client_name=client_name,
                 redirect_uri=redirect_uris[0] if redirect_uris else "",
                 scope=scope,
+                grant_types=grant_types,
                 is_confidential=is_confidential,
             )
             session.add(client)
@@ -411,11 +523,19 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         self.clients: dict[str, OAuthClientInformationFull] = {}
         self.auth_codes: dict[str, AuthorizationCode] = {}
         self.tokens: dict[str, AccessToken] = {}
+        # Refresh token storage (token string -> RefreshToken)
+        self.refresh_tokens: dict[str, RefreshToken] = {}
         self.state_mapping: dict[str, dict[str, str]] = {}
         self.g_token_mapping: dict[str, str] = {}
         self.state_resource_tokens: dict[str] = {}
         # Map access tokens to user IDs for user-specific filtering
         self.token_users: dict[str, str] = {}
+        # Map refresh tokens to user IDs so refreshed access tokens keep
+        # their user association
+        self.refresh_token_users: dict[str, str] = {}
+        # Map refresh tokens to the underlying Google token so refreshed
+        # access tokens keep working with get_google_token_for_token
+        self.refresh_token_g_tokens: dict[str, str] = {}
         # Map authorization codes to user profiles for user lookup and creation
         self.code_user_profiles: dict[str, dict[str, Any]] = {}
         self.google_cache: dict[str, dict[str, Any]] = {}
@@ -593,7 +713,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             token=mcp_token,
             client_id=client.client_id,
             scopes=authorization_code.scopes,
-            expires_at=int(time.time()) + 3600,
+            expires_at=int(time.time()) + Config.ACCESS_TOKEN_EXPIRES_IN,
         )
 
         google_token = next(
@@ -649,11 +769,27 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
 
         del self.auth_codes[authorization_code.code]
 
+        # Issue refresh token so clients can renew access without
+        # re-running the interactive Google authorization flow
+        refresh_token_str = secrets.token_hex(32)
+        self.refresh_tokens[refresh_token_str] = RefreshToken(
+            token=refresh_token_str,
+            client_id=client.client_id,
+            scopes=authorization_code.scopes,
+            expires_at=_refresh_token_expires_at(),
+        )
+        user_id = self.token_users.get(mcp_token)
+        if user_id is not None:
+            self.refresh_token_users[refresh_token_str] = user_id
+        if google_token:
+            self.refresh_token_g_tokens[refresh_token_str] = google_token
+
         return OAuthToken(
             access_token=mcp_token,
             token_type="bearer",
-            expires_in=3600,
+            expires_in=Config.ACCESS_TOKEN_EXPIRES_IN,
             scope=" ".join(authorization_code.scopes),
+            refresh_token=refresh_token_str,
         )
 
     async def load_access_token(self, token: str) -> AccessToken | None:
@@ -673,8 +809,25 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         return access_token
 
     async def load_refresh_token(self, client: OAuthClientInformationFull, refresh_token: str) -> RefreshToken | None:
-        """Load a refresh token - not supported."""
-        return None
+        """Load a refresh token."""
+        token_data = self.refresh_tokens.get(refresh_token)
+        if not token_data:
+            return None
+
+        # Refresh tokens are bound to the client they were issued to
+        if token_data.client_id != client.client_id:
+            logger.warning(
+                f"Refresh token client mismatch: issued to {token_data.client_id}, "
+                f"presented by {client.client_id}"
+            )
+            return None
+
+        # Drop expired refresh tokens
+        if token_data.expires_at is not None and time.time() > token_data.expires_at:
+            self._discard_refresh_token(refresh_token)
+            return None
+
+        return token_data
 
     async def exchange_refresh_token(
             self,
@@ -682,16 +835,73 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
             refresh_token: RefreshToken,
             scopes: list[str],
     ) -> OAuthToken:
-        """Exchange refresh token"""
-        raise NotImplementedError("Not supported")
+        """Exchange refresh token for a new access/refresh token pair.
+
+        Implements refresh token rotation (OAuth 2.1): the presented refresh
+        token is invalidated and a new one is returned with the new access
+        token.
+        """
+        token_str = refresh_token.token
+        if token_str not in self.refresh_tokens:
+            raise TokenError("invalid_grant")
+
+        user_id = self.refresh_token_users.get(token_str)
+        google_token = self.refresh_token_g_tokens.get(token_str)
+
+        # Rotate: invalidate the presented refresh token
+        self._discard_refresh_token(token_str)
+
+        new_scopes = scopes or refresh_token.scopes
+
+        mcp_token = secrets.token_hex(32)
+        self.tokens[mcp_token] = AccessToken(
+            token=mcp_token,
+            client_id=client.client_id,
+            scopes=new_scopes,
+            expires_at=int(time.time()) + Config.ACCESS_TOKEN_EXPIRES_IN,
+        )
+
+        if user_id is not None:
+            self.token_users[mcp_token] = user_id
+        if google_token:
+            self.g_token_mapping[mcp_token] = google_token
+
+        new_refresh_token = secrets.token_hex(32)
+        self.refresh_tokens[new_refresh_token] = RefreshToken(
+            token=new_refresh_token,
+            client_id=client.client_id,
+            scopes=new_scopes,
+            expires_at=_refresh_token_expires_at(),
+        )
+        if user_id is not None:
+            self.refresh_token_users[new_refresh_token] = user_id
+        if google_token:
+            self.refresh_token_g_tokens[new_refresh_token] = google_token
+
+        logger.info(f"Refreshed tokens for client {client.client_id}")
+        return OAuthToken(
+            access_token=mcp_token,
+            token_type="bearer",
+            expires_in=Config.ACCESS_TOKEN_EXPIRES_IN,
+            scope=" ".join(new_scopes),
+            refresh_token=new_refresh_token,
+        )
+
+    def _discard_refresh_token(self, token_str: str) -> None:
+        """Remove a refresh token and its associated mappings."""
+        self.refresh_tokens.pop(token_str, None)
+        self.refresh_token_users.pop(token_str, None)
+        self.refresh_token_g_tokens.pop(token_str, None)
 
     async def revoke_token(self, token: str, token_type_hint: str | None = None) -> None:
-        """Revoke a token."""
+        """Revoke an access or refresh token."""
         if token in self.tokens:
             del self.tokens[token]
             # Clean up user mapping
             if token in self.token_users:
                 del self.token_users[token]
+        if token in self.refresh_tokens:
+            self._discard_refresh_token(token)
 
     async def introspect_token(self, token: str) -> AccessToken | None:
         """Introspect an access token for resource server validation.
@@ -705,8 +915,8 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
         if not access_token:
             return None
 
-        # Check expiration
-        if time.time() > access_token.expires_at:
+        # Check expiration (Google resource tokens are stored without expiry)
+        if access_token.expires_at is not None and time.time() > access_token.expires_at:
             del self.tokens[token]
             # Clean up user mapping
             if token in self.token_users:
@@ -746,7 +956,7 @@ class GoogleOAuthProvider(OAuthAuthorizationServerProvider):
                 detail="Failed to fetch Google OAuth user profile"
             )
 
-        logger.debug(f"google user {http_response.json()["email"]}")
+        logger.debug(f"google user {http_response.json()['email']}")
 
         self.google_cache[g_token] = http_response.json()
 
