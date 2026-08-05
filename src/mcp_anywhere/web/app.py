@@ -148,11 +148,39 @@ You can use tools/list to see all available tools from all mounted servers.
         yield
         await close_db()
 
+    # Wrap the base lifespan so the crash-recovery watchdog runs for the app's
+    # lifetime: it re-mounts any server whose container has crashed (and escalates
+    # its memory limit on OOM) without restarting the whole app.
+    import asyncio
+    import contextlib as _contextlib
+
+    from mcp_anywhere.core.mcp_manager import watchdog_loop
+
+    _base_lifespan = (
+        mcp_http_app.lifespan if transport_mode == "http" else simple_lifespan
+    )
+
+    @asynccontextmanager
+    async def lifespan_with_watchdog(app: Starlette):
+        async with _base_lifespan(app):
+            watchdog_task = None
+            if container_manager is not None:
+                watchdog_task = asyncio.create_task(
+                    watchdog_loop(mcp_manager, container_manager)
+                )
+            try:
+                yield
+            finally:
+                if watchdog_task is not None:
+                    watchdog_task.cancel()
+                    with _contextlib.suppress(asyncio.CancelledError):
+                        await watchdog_task
+
     # Create the main app - THE KEY: Use FastMCP's lifespan, not our own!
     # This is what the old architecture did right (line 140 in asgi.py.bak)
     app = Starlette(
         debug=True,
-        lifespan=mcp_http_app.lifespan if transport_mode == "http" else simple_lifespan,
+        lifespan=lifespan_with_watchdog,
         middleware=middleware,
         routes=app_routes,
     )

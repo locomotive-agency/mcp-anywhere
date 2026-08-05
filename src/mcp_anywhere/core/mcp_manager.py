@@ -1,5 +1,7 @@
 """MCP Manager for handling dynamic server mounting and unmounting."""
 
+import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,45 @@ from mcp_anywhere.logging_config import get_logger
 from mcp_anywhere.security.file_manager import SecureFileManager
 
 logger = get_logger(__name__)
+
+# Per-server docker --memory limit, with OOM escalation. mcp-anywhere spawns each
+# server container with a fixed 512m limit; heavy servers (e.g. the Python sandbox)
+# get OOM-killed. The crash watchdog escalates a server from 512m to 1g the first
+# time it is OOM-killed, and persists that override under DATA_DIR so it survives
+# app restarts. create_mcp_config reads the effective limit on every (re)mount.
+DEFAULT_MEMORY_LIMIT = "512m"
+ESCALATED_MEMORY_LIMIT = "1g"
+
+
+def _mem_overrides_path() -> Path:
+    return Path(Config.DATA_DIR) / "mem-overrides.json"
+
+
+def get_server_memory_limit(server_id: str) -> str:
+    """Effective docker --memory limit for a server (default 512m, escalated to 1g)."""
+    try:
+        data = json.loads(_mem_overrides_path().read_text())
+        limit = data.get(server_id)
+        return limit if isinstance(limit, str) and limit else DEFAULT_MEMORY_LIMIT
+    except (OSError, ValueError):
+        return DEFAULT_MEMORY_LIMIT
+
+
+def set_server_memory_limit(server_id: str, limit: str) -> None:
+    """Persist a per-server memory override under DATA_DIR."""
+    path = _mem_overrides_path()
+    try:
+        data = json.loads(path.read_text())
+        if not isinstance(data, dict):
+            data = {}
+    except (OSError, ValueError):
+        data = {}
+    data[server_id] = limit
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2))
+    except OSError as e:
+        logger.error(f"Failed to persist memory override for {server_id}: {e}")
 
 
 def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
@@ -83,6 +124,9 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
     host_persist_dir = container_manager.translate_to_host_path(str(persist_dir))
     volume_args.extend(["-v", f"{host_persist_dir}:/data:rw"])
 
+    # Effective memory limit (512m default; the crash watchdog escalates to 1g on OOM).
+    mem_limit = get_server_memory_limit(server.id)
+
     new_config = {
         "command": "docker",
         "args": [
@@ -92,7 +136,7 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
             "--name",
             container_name,  # Container name
             "--memory",
-            "512m",  # Memory limit
+            mem_limit,  # Memory limit (512m default, 1g after an OOM kill)
             "--cpus",
             "0.5",  # CPU limit
             *env_args,  # Environment variables
@@ -255,3 +299,73 @@ class MCPManager:
 
             # Re-raise the original error if no better error found
             raise
+
+
+async def watchdog_loop(
+    mcp_manager: "MCPManager",
+    container_manager: ContainerManager,
+    interval: int = 45,
+) -> None:
+    """Detect crashed server containers and re-mount just those, in place.
+
+    mcp-anywhere proxies each server via a persistent ``docker run -i`` process that
+    dies when the container crashes and is NOT auto-reconnected — leaving the server
+    "running" (if restarted at the container level) but detached from the gateway.
+    This background loop restores only the crashed server(s) by unmounting the stale
+    proxy and re-mounting via the app's own add_server logic, without restarting the
+    whole app. On an OOM kill it first escalates the container's memory limit from
+    512m to 1g (persisted), so the re-mounted container gets more headroom.
+    """
+    from mcp_anywhere.database import get_active_servers, get_async_session
+
+    logger.info(f"[watchdog] server-recovery loop started (interval={interval}s)")
+    while True:
+        try:
+            await asyncio.sleep(interval)
+            async with get_async_session() as session:
+                servers = await get_active_servers(session)
+
+            for server in servers:
+                try:
+                    if getattr(server, "build_status", None) != "built":
+                        continue
+                    if container_manager._is_container_healthy(server):
+                        continue
+
+                    name = container_manager._get_container_name(server.id)
+
+                    # OOM escalation: bump 512m -> 1g the first time (check BEFORE cleanup,
+                    # while the exited container still exists to report OOMKilled).
+                    if (
+                        container_manager.is_oom_killed(server.id)
+                        and get_server_memory_limit(server.id) == DEFAULT_MEMORY_LIMIT
+                    ):
+                        set_server_memory_limit(server.id, ESCALATED_MEMORY_LIMIT)
+                        logger.warning(
+                            f"[watchdog] '{server.name}' was OOM-killed at "
+                            f"{DEFAULT_MEMORY_LIMIT} -> escalating memory to "
+                            f"{ESCALATED_MEMORY_LIMIT}"
+                        )
+
+                    logger.warning(
+                        f"[watchdog] server '{server.name}' container is down — recovering"
+                    )
+                    # Free the container name so a fresh `docker run` can bind it.
+                    container_manager._cleanup_existing_container(name)
+                    # Drop the stale proxy, then re-mount cleanly (fresh docker run + connect).
+                    mcp_manager.remove_server(server.id)
+                    await mcp_manager.add_server(server)
+                    logger.info(
+                        f"[watchdog] server '{server.name}' recovered "
+                        f"(memory={get_server_memory_limit(server.id)})"
+                    )
+                except Exception as e:  # one bad server must not stop the others
+                    logger.error(
+                        f"[watchdog] recovery failed for "
+                        f"'{getattr(server, 'name', '?')}': {e}"
+                    )
+        except asyncio.CancelledError:
+            logger.info("[watchdog] loop cancelled")
+            raise
+        except Exception as e:  # never let the watchdog die on a transient error
+            logger.error(f"[watchdog] loop iteration error: {e}")
