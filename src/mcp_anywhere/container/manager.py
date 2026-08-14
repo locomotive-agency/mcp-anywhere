@@ -194,6 +194,19 @@ class ContainerManager:
             logger.warning(f"Error checking container {container_name}: {e}")
             return False
 
+    def is_oom_killed(self, server_id: str) -> bool:
+        """Return True if the server's (exited) container was killed by the OOM killer.
+
+        Must be checked before the crashed container is removed, while it still
+        exists in the exited state and can report its final State.OOMKilled flag.
+        """
+        container_name = self._get_container_name(server_id)
+        try:
+            container = self.docker_client.containers.get(container_name)
+            return bool(container.attrs.get("State", {}).get("OOMKilled"))
+        except (NotFound, APIError, KeyError, AttributeError):
+            return False
+
     def cleanup_stopped_container(self, container_name: str) -> None:
 
         try:
