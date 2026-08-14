@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,11 @@ logger = get_logger(__name__)
 # app restarts. create_mcp_config reads the effective limit on every (re)mount.
 DEFAULT_MEMORY_LIMIT = "512m"
 ESCALATED_MEMORY_LIMIT = "1g"
+
+# Bounds for the crash watchdog's sweep interval, in seconds. The actual delay is
+# drawn fresh from this range before each pass rather than being a fixed tick.
+WATCHDOG_MIN_INTERVAL = 300
+WATCHDOG_MAX_INTERVAL = 600
 
 
 def _mem_overrides_path() -> Path:
@@ -304,7 +310,8 @@ class MCPManager:
 async def watchdog_loop(
     mcp_manager: "MCPManager",
     container_manager: ContainerManager,
-    interval: int = 45,
+    min_interval: int = WATCHDOG_MIN_INTERVAL,
+    max_interval: int = WATCHDOG_MAX_INTERVAL,
 ) -> None:
     """Detect crashed server containers and re-mount just those, in place.
 
@@ -315,13 +322,22 @@ async def watchdog_loop(
     proxy and re-mounting via the app's own add_server logic, without restarting the
     whole app. On an OOM kill it first escalates the container's memory limit from
     512m to 1g (persisted), so the re-mounted container gets more headroom.
+
+    The delay between sweeps is re-randomized in ``[min_interval, max_interval]``
+    before every pass. A permanently broken server (one whose container exits as
+    soon as it is started) can never be recovered, so a fixed short interval turns
+    into a tight retry loop against it; jittering a longer wait keeps that cheap and
+    spreads the Docker API load instead of bunching it onto a fixed tick.
     """
     from mcp_anywhere.database import get_active_servers, get_async_session
 
-    logger.info(f"[watchdog] server-recovery loop started (interval={interval}s)")
+    logger.info(
+        f"[watchdog] server-recovery loop started "
+        f"(interval={min_interval}-{max_interval}s, randomized per pass)"
+    )
     while True:
         try:
-            await asyncio.sleep(interval)
+            await asyncio.sleep(random.randint(min_interval, max_interval))
             async with get_async_session() as session:
                 servers = await get_active_servers(session)
 
