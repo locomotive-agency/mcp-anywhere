@@ -17,13 +17,28 @@ from mcp_anywhere.security.file_manager import SecureFileManager
 
 logger = get_logger(__name__)
 
-# Per-server docker --memory limit, with OOM escalation. mcp-anywhere spawns each
-# server container with a fixed 512m limit; heavy servers (e.g. the Python sandbox)
-# get OOM-killed. The crash watchdog escalates a server from 512m to 1g the first
-# time it is OOM-killed, and persists that override under DATA_DIR so it survives
-# app restarts. create_mcp_config reads the effective limit on every (re)mount.
+# Per-server docker --memory limit, adjusted in both directions. mcp-anywhere spawns
+# each server container with a fixed 512m limit; heavy servers (e.g. the Python
+# sandbox) get OOM-killed. The crash watchdog escalates such a server to 1g and
+# persists the override under DATA_DIR so it survives app restarts;
+# create_mcp_config reads the effective limit on every (re)mount.
+#
+# Escalation is driven by the container's own cgroup limit counter, not by Docker's
+# State.OOMKilled -- that flag is also set when the *host* ran out of memory and the
+# kernel picked this container as its victim, and answering a host-wide shortage by
+# handing out more memory makes the next shortage worse. See review_server_memory.
 DEFAULT_MEMORY_LIMIT = "512m"
 ESCALATED_MEMORY_LIMIT = "1g"
+
+# De-escalation. Without a way back, an override is a ratchet: one unusual request
+# costs a server double the memory for the life of the deployment, and on a host
+# where the limits already sum to more than RAM, stale overrides make a global OOM
+# likelier rather than less likely. A server is handed back to DEFAULT_MEMORY_LIMIT
+# once its high-water mark has stayed well inside that limit for a long, quiet run.
+# The measure is cgroup memory.peak, which resets when the container restarts, so a
+# reading is always "peak during this run" and the uptime floor gives it weight.
+DEESCALATE_PEAK_RATIO = 0.6
+DEESCALATE_MIN_UPTIME_SECONDS = 7 * 24 * 60 * 60
 
 # Bounds for the crash watchdog's sweep interval, in seconds. The actual delay is
 # drawn fresh from this range before each pass rather than being a fixed tick.
@@ -60,6 +75,98 @@ def set_server_memory_limit(server_id: str, limit: str) -> None:
         path.write_text(json.dumps(data, indent=2))
     except OSError as e:
         logger.error(f"Failed to persist memory override for {server_id}: {e}")
+
+
+def clear_server_memory_limit(server_id: str) -> None:
+    """Drop a server's memory override, returning it to DEFAULT_MEMORY_LIMIT.
+
+    Takes effect at that server's next (re)mount, when create_mcp_config reads the
+    effective limit again. Nothing is remounted here deliberately: a healthy server
+    is not worth interrupting in order to give it *less* memory.
+    """
+    path = _mem_overrides_path()
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return
+    if not isinstance(data, dict) or server_id not in data:
+        return
+    del data[server_id]
+    try:
+        path.write_text(json.dumps(data, indent=2))
+    except OSError as e:
+        logger.error(f"Failed to clear memory override for {server_id}: {e}")
+
+
+_LIMIT_UNITS = {"b": 1, "k": 1024, "m": 1024**2, "g": 1024**3}
+
+
+def _limit_to_bytes(limit: str) -> int | None:
+    """A docker memory string ("512m", "1g") in bytes, or None if unparseable."""
+    text = limit.strip().lower()
+    if not text:
+        return None
+    unit = _LIMIT_UNITS.get(text[-1])
+    if unit is None:
+        return int(text) if text.isdigit() else None
+    digits = text[:-1]
+    return int(digits) * unit if digits.isdigit() else None
+
+
+def review_server_memory(
+    server: "MCPServer", container_manager: ContainerManager
+) -> None:
+    """Move a running server's memory limit up or down on cgroup evidence.
+
+    Up when the container has hit *its own* limit -- memory.events ``oom``, which the
+    global OOM killer cannot increment. Down when it has demonstrably not needed the
+    extra headroom for a long, quiet run.
+
+    A container killed by a host-wide OOM lands here with kills but no limit event,
+    and is deliberately left alone: it was not short of memory, the machine was.
+    """
+    stats = container_manager.read_cgroup_memory(server.id)
+    if stats is None:
+        return  # no evidence, which is not the same as no OOM
+
+    current = get_server_memory_limit(server.id)
+
+    if stats["limit_ooms"] > 0:
+        if current == DEFAULT_MEMORY_LIMIT:
+            set_server_memory_limit(server.id, ESCALATED_MEMORY_LIMIT)
+            logger.warning(
+                f"[watchdog] '{server.name}' reached its own {DEFAULT_MEMORY_LIMIT} "
+                f"limit {stats['limit_ooms']}x (cgroup memory.events oom) -> "
+                f"escalating to {ESCALATED_MEMORY_LIMIT}"
+            )
+        return
+
+    if stats["kills"] > 0:
+        logger.warning(
+            f"[watchdog] '{server.name}' had {stats['kills']} OOM kill(s) without ever "
+            f"reaching its own {current} limit -- host-level OOM, not escalating"
+        )
+        return
+
+    if current == DEFAULT_MEMORY_LIMIT:
+        return
+
+    peak = stats["peak_bytes"]
+    uptime = container_manager.container_uptime_seconds(server.id)
+    default_bytes = _limit_to_bytes(DEFAULT_MEMORY_LIMIT)
+    if peak is None or uptime is None or default_bytes is None:
+        return
+    if uptime < DEESCALATE_MIN_UPTIME_SECONDS:
+        return
+    if peak >= default_bytes * DEESCALATE_PEAK_RATIO:
+        return
+
+    clear_server_memory_limit(server.id)
+    logger.info(
+        f"[watchdog] '{server.name}' peaked at {peak // 1024 // 1024}MiB over "
+        f"{uptime / 86400:.1f}d at {current} -> de-escalating to "
+        f"{DEFAULT_MEMORY_LIMIT} (applies at its next remount)"
+    )
 
 
 def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
@@ -326,8 +433,9 @@ async def watchdog_loop(
     "running" (if restarted at the container level) but detached from the gateway.
     This background loop restores only the crashed server(s) by unmounting the stale
     proxy and re-mounting via the app's own add_server logic, without restarting the
-    whole app. On an OOM kill it first escalates the container's memory limit from
-    512m to 1g (persisted), so the re-mounted container gets more headroom.
+    whole app. It also reviews the memory limit of every *healthy* server on each
+    pass, escalating one that has hit its own cgroup limit and giving the override
+    back once a server has proven it does not need the headroom.
 
     The delay between sweeps is re-randomized in ``[min_interval, max_interval]``
     before every pass. A permanently broken server (one whose container exits as
@@ -352,21 +460,24 @@ async def watchdog_loop(
                     if getattr(server, "build_status", None) != "built":
                         continue
                     if container_manager._is_container_healthy(server):
+                        review_server_memory(server, container_manager)
                         continue
 
                     name = container_manager._get_container_name(server.id)
 
-                    # OOM escalation: bump 512m -> 1g the first time (check BEFORE cleanup,
-                    # while the exited container still exists to report OOMKilled).
-                    if (
-                        container_manager.is_oom_killed(server.id)
-                        and get_server_memory_limit(server.id) == DEFAULT_MEMORY_LIMIT
-                    ):
-                        set_server_memory_limit(server.id, ESCALATED_MEMORY_LIMIT)
+                    # No escalation on this path. The only post-mortem signal Docker
+                    # offers is State.OOMKilled, and it reads the same for a breach of
+                    # the container's own limit as for a host-wide OOM that merely
+                    # chose this container -- so acting on it would answer a shortage
+                    # of host memory by promising out more of it. A server that really
+                    # is short gets escalated by review_server_memory on a later
+                    # sweep, from its own cgroup counter, once it is running again.
+                    if container_manager.is_oom_killed(server.id):
                         logger.warning(
-                            f"[watchdog] '{server.name}' was OOM-killed at "
-                            f"{DEFAULT_MEMORY_LIMIT} -> escalating memory to "
-                            f"{ESCALATED_MEMORY_LIMIT}"
+                            f"[watchdog] '{server.name}' exited OOM-killed; the cause "
+                            f"(own limit vs host-wide) is not attributable after the "
+                            f"fact -- recovering at "
+                            f"{get_server_memory_limit(server.id)}"
                         )
 
                     logger.warning(
