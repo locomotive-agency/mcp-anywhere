@@ -1,9 +1,11 @@
 """MCP Manager for handling dynamic server mounting and unmounting."""
 
+from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
 
+from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.database import MCPServer
 from mcp_anywhere.logging_config import get_logger
@@ -67,6 +69,19 @@ def create_mcp_config(server: "MCPServer") -> dict[str, dict[str, Any]]:
             # not ours — translate before passing to docker run.
             host_source = container_manager.translate_to_host_path(source_path)
             volume_args.extend(["-v", f"{host_source}:{container_path}:ro"])
+
+    # Persistent, writable per-server data directory.
+    # mcp-anywhere spawns each server as a fresh sibling container, so anything
+    # written inside the container's own filesystem is lost when the container
+    # is rebuilt or recreated (on restart, or with CLEANUP_CONTAINERS_ON_SHUTDOWN).
+    # Bind-mount a per-server directory that lives under DATA_DIR (the app's
+    # persistent volume) at /data (read-write), so servers can keep state across
+    # rebuilds — for example OAuth/MSAL token caches. translate_to_host_path maps
+    # the source to the host path when running as a sibling container.
+    persist_dir = Path(Config.DATA_DIR) / "server-data" / server.id
+    persist_dir.mkdir(parents=True, exist_ok=True)
+    host_persist_dir = container_manager.translate_to_host_path(str(persist_dir))
+    volume_args.extend(["-v", f"{host_persist_dir}:/data:rw"])
 
     new_config = {
         "command": "docker",
