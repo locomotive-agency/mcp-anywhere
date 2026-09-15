@@ -51,13 +51,21 @@ def _mem_overrides_path() -> Path:
 
 
 def get_server_memory_limit(server_id: str) -> str:
-    """Effective docker --memory limit for a server (default 512m, escalated to 1g)."""
+    """Effective docker --memory limit for a server (default 512m, escalated to 1g).
+
+    A damaged overrides file must never be worse than a missing one: valid JSON that
+    is not an object (``[]``, a bare string) would otherwise raise AttributeError out
+    of this getter and fail every memory review, so the shape is checked rather than
+    assumed -- matching the guard set_server_memory_limit already applies on write.
+    """
     try:
         data = json.loads(_mem_overrides_path().read_text())
-        limit = data.get(server_id)
-        return limit if isinstance(limit, str) and limit else DEFAULT_MEMORY_LIMIT
     except (OSError, ValueError):
         return DEFAULT_MEMORY_LIMIT
+    if not isinstance(data, dict):
+        return DEFAULT_MEMORY_LIMIT
+    limit = data.get(server_id)
+    return limit if isinstance(limit, str) and limit else DEFAULT_MEMORY_LIMIT
 
 
 def set_server_memory_limit(server_id: str, limit: str) -> None:
@@ -459,8 +467,17 @@ async def watchdog_loop(
                 try:
                     if getattr(server, "build_status", None) != "built":
                         continue
-                    if container_manager._is_container_healthy(server):
-                        review_server_memory(server, container_manager)
+                    # Every Docker call below is blocking I/O on a client whose
+                    # timeout is DOCKER_TIMEOUT (300s by default). This loop runs in
+                    # the same event loop that serves HTTP, and the healthy path runs
+                    # for every server on every sweep, so a stalled daemon would stall
+                    # the gateway rather than just the watchdog. Hand them to threads.
+                    if await asyncio.to_thread(
+                        container_manager._is_container_healthy, server
+                    ):
+                        await asyncio.to_thread(
+                            review_server_memory, server, container_manager
+                        )
                         continue
 
                     name = container_manager._get_container_name(server.id)
@@ -472,7 +489,9 @@ async def watchdog_loop(
                     # of host memory by promising out more of it. A server that really
                     # is short gets escalated by review_server_memory on a later
                     # sweep, from its own cgroup counter, once it is running again.
-                    if container_manager.is_oom_killed(server.id):
+                    if await asyncio.to_thread(
+                        container_manager.is_oom_killed, server.id
+                    ):
                         logger.warning(
                             f"[watchdog] '{server.name}' exited OOM-killed; the cause "
                             f"(own limit vs host-wide) is not attributable after the "

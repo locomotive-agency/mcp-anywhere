@@ -145,6 +145,28 @@ class TestOverrideFile:
         mm.clear_server_memory_limit("never-seen")  # must not raise
         assert not mm._mem_overrides_path().exists()
 
+    @pytest.mark.parametrize("content", ["[]", '"a string"', "17", "null"])
+    def test_valid_json_that_is_not_an_object_falls_back(
+        self, data_dir, server, content
+    ):
+        """A damaged file must be no worse than a missing one, not raise."""
+        mm._mem_overrides_path().write_text(content)
+        assert mm.get_server_memory_limit(server.id) == mm.DEFAULT_MEMORY_LIMIT
+
+    def test_corrupt_json_falls_back(self, data_dir, server):
+        mm._mem_overrides_path().write_text("{not json")
+        assert mm.get_server_memory_limit(server.id) == mm.DEFAULT_MEMORY_LIMIT
+
+    def test_a_non_string_limit_falls_back(self, data_dir, server):
+        mm._mem_overrides_path().write_text('{"srv-1": 512}')
+        assert mm.get_server_memory_limit(server.id) == mm.DEFAULT_MEMORY_LIMIT
+
+    def test_a_damaged_file_does_not_break_a_review(self, data_dir, server):
+        """The regression this guards: every healthy-server review used to raise."""
+        mm._mem_overrides_path().write_text("[]")
+        mm.review_server_memory(server, _manager(_stats(limit_ooms=2, kills=2)))
+        assert mm.get_server_memory_limit(server.id) == mm.ESCALATED_MEMORY_LIMIT
+
 
 class TestLimitParsing:
     @pytest.mark.parametrize(
