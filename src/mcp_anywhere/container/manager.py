@@ -33,6 +33,24 @@ from mcp_anywhere.security.file_manager import SecureFileManager
 logger = get_logger(__name__)
 
 
+def split_image_ref(image: str) -> tuple[str, str]:
+    """Split a Docker image reference into ``(repository, tag)``.
+
+    docker-py pulls *every* tag of a repository when no tag is given, so the
+    caller must always supply one. Two shapes have to survive that: a digest
+    reference pins the exact bytes and is passed through as the tag, and a
+    registry host carrying a port (``localhost:5000/img``) must not have that
+    port mistaken for one.
+    """
+    if "@" in image:
+        repository, _, digest = image.partition("@")
+        return repository, digest
+    repository, separator, tag = image.rpartition(":")
+    if separator and "/" not in tag:
+        return repository, tag
+    return image, "latest"
+
+
 class ContainerManager:
     """Manages container lifecycle with language-agnostic sandbox support."""
 
@@ -141,7 +159,18 @@ class ContainerManager:
             return False
 
     def get_image_tag(self, server: MCPServer) -> str:
-        """Generate the Docker image tag for a server."""
+        """Return the image that backs a server.
+
+        For npx and uvx runtimes this names an image mcp-anywhere builds itself. A
+        "docker" runtime server is already published as an image and names it in
+        install_command, so there is nothing to build and that reference *is* the
+        tag -- which is also what keeps _is_container_healthy's image comparison
+        meaningful for it.
+        """
+        if server.runtime_type == "docker":
+            image = (server.install_command or "").strip()
+            if image:
+                return image
         return f"mcp-anywhere/server-{server.id}"
 
     def _get_container_name(self, server_id: str) -> str:
@@ -459,8 +488,36 @@ class ContainerManager:
 
         return parts
 
+    def _pull_server_image(self, server: MCPServer) -> str:
+        """Pull the published image a docker-runtime server runs from.
+
+        Nothing is built for this runtime: the server ships as an image, so the
+        whole build step collapses into making sure that image is present locally.
+        create_mcp_config then runs it exactly like a built one, passing
+        start_command through as the container's arguments.
+        """
+        image = (server.install_command or "").strip()
+        if not image:
+            raise ValueError(
+                "A docker runtime server must name its published image in "
+                "install_command (for example 'mcp/dockerhub')."
+            )
+
+        repository, tag = split_image_ref(image)
+        logger.info(f"Pulling image {repository}:{tag} for server {server.name}")
+        try:
+            self.docker_client.images.pull(repository, tag=tag)
+        except (ImageNotFound, APIError) as e:
+            raise RuntimeError(f"Failed to pull image '{image}': {e}") from e
+
+        logger.info(f"Image {image} ready for server {server.name}")
+        return image
+
     def build_server_image(self, server: MCPServer) -> str:
         """Build a Docker image for an MCP server with dependencies pre-installed."""
+        if server.runtime_type == "docker":
+            return self._pull_server_image(server)
+
         image_tag = self.get_image_tag(server)
 
         logger.info(
@@ -474,6 +531,7 @@ class ContainerManager:
             elif server.runtime_type == "uvx":
                 lang = "python"
             else:
+                # "docker" never reaches here -- it returns above, before any build.
                 raise ValueError(f"Unsupported runtime type: {server.runtime_type}")
 
             # Parse the install command for container execution
