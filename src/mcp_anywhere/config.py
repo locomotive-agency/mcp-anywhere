@@ -57,6 +57,18 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
     SESSION_MAX_AGE = int(os.environ.get("SESSION_MAX_AGE", "28800"))  # 8 hours default
 
+    # OAuth token lifetimes (seconds)
+    # Access tokens are short-lived; clients obtain new ones silently via the
+    # refresh_token grant, so MCP clients no longer need to re-run the
+    # interactive OAuth flow every time an access token expires.
+    ACCESS_TOKEN_EXPIRES_IN = int(
+        os.environ.get("ACCESS_TOKEN_EXPIRES_IN", "3600")
+    )  # 1 hour default
+    # Set to 0 to issue non-expiring refresh tokens.
+    REFRESH_TOKEN_EXPIRES_IN = int(
+        os.environ.get("REFRESH_TOKEN_EXPIRES_IN", "2592000")
+    )  # 30 days default
+
     # Server settings
     DEFAULT_HOST = os.environ.get("DEFAULT_HOST", "0.0.0.0")
     DEFAULT_PORT = int(os.environ.get("DEFAULT_PORT", "8000"))
