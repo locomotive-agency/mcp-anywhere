@@ -88,6 +88,13 @@ class Config:
 
     # External API keys
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+
+    # Seconds to hold the aggregated tools/list before rebuilding it. A listing asks
+    # every mounted server, so its cost grows with the number of servers; on a large
+    # gateway that is seconds per connecting client. 0 disables caching, which stays
+    # the default because a small gateway gains nothing and a cache nobody asked for
+    # only risks a stale catalogue.
+    TOOL_LIST_CACHE_TTL = float(os.environ.get("TOOL_LIST_CACHE_TTL", "0"))
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
     # Claude settings

@@ -15,6 +15,7 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from sqlalchemy import select
 
 from mcp_anywhere.auth.models import UserToolPermission
+from mcp_anywhere.core.tool_cache import tool_list_cache
 from mcp_anywhere.database import MCPServerTool, get_async_session
 from mcp_anywhere.logging_config import get_logger
 
@@ -38,8 +39,12 @@ class ToolFilterMiddleware(Middleware):
             list[Any]: Filtered list with disabled tools removed
         """
 
-        # Get the tools from the next middleware in the chain
-        tools = await call_next(context)
+        # Get the tools from the next middleware in the chain. That call fans out to
+        # every mounted server, so it is the expensive half of a listing; the cache
+        # holds its result when TOOL_LIST_CACHE_TTL is set. Only the *unfiltered*
+        # catalogue is cached -- the per-user filtering below still runs every time,
+        # so a cache can never widen what a caller sees.
+        tools = await tool_list_cache.get_or_populate(lambda: call_next(context))
 
         user_data = []
 

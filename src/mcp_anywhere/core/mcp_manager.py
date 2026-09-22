@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 
 from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
+from mcp_anywhere.core.tool_cache import tool_list_cache
 from mcp_anywhere.database import MCPServer
 from mcp_anywhere.logging_config import get_logger
 from mcp_anywhere.security.file_manager import SecureFileManager
@@ -214,6 +215,9 @@ class MCPManager:
         # Track the mounted server
         self.mounted_servers[server_config.id] = proxy
 
+        # The catalogue just changed; a cached listing would hide this server.
+        tool_list_cache.invalidate(f"mounted '{server_config.name}'")
+
         logger.info(
             f"Successfully mounted server '{server_config.name}' with prefix '{prefix}'"
         )
@@ -254,6 +258,8 @@ class MCPManager:
             logger.info(
                 f"Successfully unmounted server '{server_id}' from all managers"
             )
+            # Same in reverse: a cached listing would keep advertising it.
+            tool_list_cache.invalidate(f"unmounted '{server_id}'")
 
         except (RuntimeError, ValueError, KeyError) as e:
             logger.exception(f"Failed to remove server '{server_id}': {e}")
