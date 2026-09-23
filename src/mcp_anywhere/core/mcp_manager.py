@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 
 from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
+from mcp_anywhere.core.instructions import schedule_instructions_refresh
 from mcp_anywhere.core.tool_cache import tool_list_cache
 from mcp_anywhere.database import MCPServer
 from mcp_anywhere.logging_config import get_logger
@@ -217,6 +218,7 @@ class MCPManager:
 
         # The catalogue just changed; a cached listing would hide this server.
         tool_list_cache.invalidate(f"mounted '{server_config.name}'")
+        schedule_instructions_refresh(self.router)
 
         logger.info(
             f"Successfully mounted server '{server_config.name}' with prefix '{prefix}'"
@@ -260,6 +262,7 @@ class MCPManager:
             )
             # Same in reverse: a cached listing would keep advertising it.
             tool_list_cache.invalidate(f"unmounted '{server_id}'")
+            schedule_instructions_refresh(self.router)
 
         except (RuntimeError, ValueError, KeyError) as e:
             logger.exception(f"Failed to remove server '{server_id}': {e}")
@@ -284,7 +287,15 @@ class MCPManager:
             discovered_tools = []
             for key, tool in tools.items():
                 discovered_tools.append(
-                    {"name": key, "description": tool.description or ""}
+                    {
+                        "name": key,
+                        "description": tool.description or "",
+                        # The input schema is what a caller needs to build arguments.
+                        # It used to be dropped here, which left tool_schema empty for
+                        # every tool and made the stored catalogue unusable for anything
+                        # beyond listing names.
+                        "schema": getattr(tool, "parameters", None),
+                    }
                 )
 
             logger.info(
