@@ -10,12 +10,14 @@ import os
 import re
 import shlex
 import socket
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
 
 import docker
 from docker import DockerClient
 from docker.errors import APIError, ImageNotFound, NotFound
+from docker.models.containers import Container
 from llm_sandbox import SandboxSession
 from sqlalchemy import select
 
@@ -49,6 +51,14 @@ def split_image_ref(image: str) -> tuple[str, str]:
     if separator and "/" not in tag:
         return repository, tag
     return image, "latest"
+
+
+def _cgroup_int(text: str | None) -> int | None:
+    """A single-value cgroup file's contents as an int; None if absent or "max"."""
+    if not text:
+        return None
+    value = text.strip()
+    return int(value) if value.isdigit() else None
 
 
 class ContainerManager:
@@ -228,6 +238,14 @@ class ContainerManager:
 
         Must be checked before the crashed container is removed, while it still
         exists in the exited state and can report its final State.OOMKilled flag.
+
+        This flag says *that* the kernel OOM-killed the container's main process, not
+        *why*. It reads the same for a breach of the container's own memory limit and
+        for a host-wide shortage in which the kernel merely picked this container as
+        its victim, so it must not be used to decide whether the container needs a
+        bigger limit -- see ContainerManager.read_cgroup_memory for a signal that can
+        tell those apart. It is also silent when the kill took a child process and
+        PID 1 exited cleanly, which is the common case for a global OOM.
         """
         container_name = self._get_container_name(server_id)
         try:
@@ -235,6 +253,95 @@ class ContainerManager:
             return bool(container.attrs.get("State", {}).get("OOMKilled"))
         except (NotFound, APIError, KeyError, AttributeError):
             return False
+
+    # Read out of a *running* server container rather than by path. The app itself
+    # runs in a container that does not mount the host's cgroupfs, so a sibling's
+    # cgroup directory is not reachable from here; `docker exec` lands inside the
+    # container's own cgroup namespace, where /sys/fs/cgroup is that container's root.
+    _CGROUP_EVENTS = "/sys/fs/cgroup/memory.events"
+    _CGROUP_PEAK = "/sys/fs/cgroup/memory.peak"
+    _CGROUP_MAX = "/sys/fs/cgroup/memory.max"
+
+    def _read_cgroup_file(self, container: Container, path: str) -> str | None:
+        """Contents of one cgroup file inside a running container, or None."""
+        try:
+            exit_code, output = container.exec_run(["cat", path])
+        except (APIError, OSError) as e:
+            logger.debug(f"Could not read {path}: {e}")
+            return None
+        if exit_code != 0 or not output:
+            return None
+        return output.decode("utf-8", "replace")
+
+    def read_cgroup_memory(self, server_id: str) -> dict[str, Any] | None:
+        """Read cgroup v2 memory accounting for a running server container.
+
+        The two counters answer different questions and only one of them attributes a
+        cause:
+
+        - ``limit_ooms`` (memory.events ``oom``) counts the times *this cgroup* hit
+          *its own* limit. A host-wide OOM never increments it.
+        - ``kills`` (memory.events ``oom_kill``) counts member processes killed by any
+          OOM killer, the global one included, so on its own it cannot say why.
+
+        Also returns ``peak_bytes`` (memory.peak, the high-water mark for the current
+        run -- it resets when the container restarts) and ``limit_bytes``
+        (memory.max, None when unlimited).
+
+        Returns None when nothing could be read: a stopped container, an image with
+        no ``cat``, or a kernel without cgroup v2 memory files. Callers must read None
+        as "no evidence", never as "no OOM".
+        """
+        try:
+            container = self.docker_client.containers.get(
+                self._get_container_name(server_id)
+            )
+        except (NotFound, APIError) as e:
+            logger.debug(f"No container to read cgroup memory for '{server_id}': {e}")
+            return None
+
+        raw_events = self._read_cgroup_file(container, self._CGROUP_EVENTS)
+        if raw_events is None:
+            return None
+
+        events: dict[str, int] = {}
+        for line in raw_events.splitlines():
+            fields = line.split()
+            if len(fields) == 2 and fields[1].lstrip("-").isdigit():
+                events[fields[0]] = int(fields[1])
+        if "oom" not in events:
+            return None
+
+        return {
+            "limit_ooms": events["oom"],
+            "kills": events.get("oom_kill", 0),
+            "peak_bytes": _cgroup_int(
+                self._read_cgroup_file(container, self._CGROUP_PEAK)
+            ),
+            "limit_bytes": _cgroup_int(
+                self._read_cgroup_file(container, self._CGROUP_MAX)
+            ),
+        }
+
+    def container_uptime_seconds(self, server_id: str) -> float | None:
+        """Seconds since the server's container started, or None if unknown."""
+        try:
+            container = self.docker_client.containers.get(
+                self._get_container_name(server_id)
+            )
+            started = container.attrs.get("State", {}).get("StartedAt")
+        except (NotFound, APIError, KeyError, AttributeError):
+            return None
+        if not started:
+            return None
+        try:
+            # Docker reports RFC3339 with nanoseconds; fromisoformat wants at most
+            # microseconds, so trim the extra digits before parsing.
+            trimmed = re.sub(r"(\.\d{6})\d+", r"\1", started.replace("Z", "+00:00"))
+            started_at = datetime.fromisoformat(trimmed)
+        except ValueError:
+            return None
+        return (datetime.now(UTC) - started_at).total_seconds()
 
     def cleanup_stopped_container(self, container_name: str) -> None:
 
