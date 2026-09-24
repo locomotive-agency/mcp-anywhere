@@ -15,7 +15,14 @@ from mcp_anywhere.auth.routes import create_oauth_http_routes
 from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
 from mcp_anywhere.core.mcp_manager import MCPManager
+from mcp_anywhere.core.instructions import (
+    BASE_INSTRUCTIONS,
+    bind_router,
+    refresh_router_instructions,
+)
 from mcp_anywhere.core.middleware import ToolFilterMiddleware
+from mcp_anywhere.core.tool_routing import install_prefix_routing
+from mcp_anywhere.core.tool_search import register_search_tool
 from mcp_anywhere.database import close_db, get_async_session, init_db
 from mcp_anywhere.logging_config import get_logger
 from mcp_anywhere.web import routes
@@ -64,16 +71,21 @@ async def create_app(transport_mode: str = "http") -> Starlette:
     # Create the MCP router (like old create_mcp_manager)
     router = FastMCP(
         name="MCP-Anywhere",
-        instructions="""This router provides access to multiple MCP servers.
-        
-All tools from mounted servers are available directly with prefixed names.
-You can use tools/list to see all available tools from all mounted servers.
-""",
+        instructions=BASE_INSTRUCTIONS,
     )
     router.add_middleware(ToolFilterMiddleware())
 
+
     # Create MCP manager
     mcp_manager = MCPManager(router)
+    bind_router(router)
+
+    if Config.TOOL_SEARCH_ENABLED:
+        # Only servers mounted right now are offered, not every one the database
+        # marks active -- a failed mount would otherwise be listed and then fail.
+        register_search_tool(router, mounted_ids=lambda: mcp_manager.mounted_servers.keys())
+        install_prefix_routing(router)
+        logger.info(f"Tool search enabled (TOOL_LIST_MODE={Config.TOOL_LIST_MODE})")
 
     # Initialize container manager and mount servers (skip during tests)
     import os
@@ -87,6 +99,9 @@ You can use tools/list to see all available tools from all mounted servers.
             await container_manager.initialize_and_build_servers()
 
         await container_manager.mount_built_servers(mcp_manager)
+
+        # Everything is mounted now, so the server table is complete.
+        await refresh_router_instructions(router)
 
     # Create FastMCP HTTP app (ONCE, like the old architecture)
     # The key insight from the old code: FastMCP creates its app with lifespan included

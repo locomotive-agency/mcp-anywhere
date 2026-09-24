@@ -15,11 +15,75 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from sqlalchemy import select
 
 from mcp_anywhere.auth.models import UserToolPermission
+from mcp_anywhere.config import Config
 from mcp_anywhere.core.tool_cache import tool_list_cache
+from mcp_anywhere.core.tool_search import (
+    META_TOOL_NAMES,
+    SEARCH_TOOL_NAME,
+    effective_list_mode,
+)
 from mcp_anywhere.database import MCPServerTool, get_async_session
 from mcp_anywhere.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+# Only these are exposed to a client that has the full catalogue. call_tool and
+# describe_tool exist for clients that do not: offered alongside the catalogue,
+# call_tool would be a second name for every tool, and a client's own per-tool
+# permission rules (allow this one, deny that one) would stop meaning anything.
+_FULL_MODE_META = frozenset({SEARCH_TOOL_NAME})
+
+
+def _tool_key(tool: object) -> str | None:
+    # The router key, not the tool's own name: a mounted server may well expose a
+    # tool whose bare name is "call_tool", and it must not pass for the gateway's.
+    return getattr(tool, "key", None) or getattr(tool, "name", None)
+
+
+def _requested_list_mode() -> str:
+    """"search" or "full" for the current request; always "full" without search."""
+    if not Config.TOOL_SEARCH_ENABLED:
+        return "full"
+    try:
+        from fastmcp.server.dependencies import get_http_headers
+
+        headers = get_http_headers()
+    except Exception:
+        headers = {}
+    return effective_list_mode(Config.TOOL_LIST_MODE, headers)
+
+
+def _apply_list_mode(tools: list) -> list:
+    """Shape a filtered listing for the request's list mode.
+
+    search: only the three meta tools, which reach everything else.
+    full:   the catalogue plus search_tools, without call_tool and describe_tool.
+    Nothing changes unless TOOL_SEARCH_ENABLED.
+    """
+    if not Config.TOOL_SEARCH_ENABLED:
+        return tools
+    if _requested_list_mode() == "search":
+        return [t for t in tools if _tool_key(t) in META_TOOL_NAMES]
+    return [
+        t
+        for t in tools
+        if _tool_key(t) not in META_TOOL_NAMES or _tool_key(t) in _FULL_MODE_META
+    ]
+
+
+def _meta_tools_without_fanout(context: MiddlewareContext) -> list | None:
+    """The router's own meta tools, read without asking any mounted server.
+
+    The point of search mode is that a client does not pay for the catalogue on
+    connect, and building the catalogue is exactly what call_next would do. Returns
+    None if the router cannot be reached, in which case the caller lists normally.
+    """
+    server = getattr(getattr(context, "fastmcp_context", None), "fastmcp", None)
+    local = getattr(getattr(server, "_tool_manager", None), "_tools", None)
+    if not isinstance(local, dict):
+        return None
+    return [tool for key, tool in local.items() if key in META_TOOL_NAMES]
 
 
 class ToolFilterMiddleware(Middleware):
@@ -39,6 +103,12 @@ class ToolFilterMiddleware(Middleware):
             list[Any]: Filtered list with disabled tools removed
         """
 
+        if _requested_list_mode() == "search":
+            meta = _meta_tools_without_fanout(context)
+            if meta is not None:
+                logger.info(f"Tool list mode 'search': advertising {len(meta)} meta tools")
+                return meta
+
         # Get the tools from the next middleware in the chain. That call fans out to
         # every mounted server, so it is the expensive half of a listing; the cache
         # holds its result when TOOL_LIST_CACHE_TTL is set. Only the *unfiltered*
@@ -52,7 +122,7 @@ class ToolFilterMiddleware(Middleware):
             user_data = context.fastmcp_context.get_http_request().state.user
         else:
             logger.error(f"No user data attached to request, unable to filter user tooling")
-            return tools
+            return _apply_list_mode(tools)
 
         try:
             disabled_tools = await self._get_disabled_tools_async()
@@ -61,16 +131,16 @@ class ToolFilterMiddleware(Middleware):
             combined_tools = disabled_tools.union(denied_tools)
         except Exception as exc:  # Do not fail tool listing on DB errors
             logger.exception(f"Tool filtering skipped due to DB error: {exc}")
-            return tools
+            return _apply_list_mode(tools)
 
         if not disabled_tools:
-            return tools
+            return _apply_list_mode(tools)
 
         filtered = self._filter_tools(list(tools), combined_tools)
         logger.info(
             f"ToolFilterMiddleware: filtered tools to {len(filtered)} allowed / enabled items"
         )
-        return filtered
+        return _apply_list_mode(filtered)
 
     @staticmethod
     async def _get_disabled_tools_async() -> set[str]:

@@ -13,6 +13,7 @@ from starlette.templating import Jinja2Templates
 from mcp_anywhere.claude_analyzer import AsyncClaudeAnalyzer
 from mcp_anywhere.config import Config
 from mcp_anywhere.container.manager import ContainerManager
+from mcp_anywhere.core.instructions import schedule_instructions_refresh
 from mcp_anywhere.database import MCPServer, MCPServerTool, get_async_session
 from mcp_anywhere.database_utils import store_server_tools
 from mcp_anywhere.logging_config import get_logger
@@ -426,6 +427,7 @@ async def toggle_tool(request: Request) -> HTMLResponse:
             # Toggle the enabled status
             tool.is_enabled = not tool.is_enabled
             await db_session.commit()
+            schedule_instructions_refresh()  # the per-server counts just changed
 
             logger.info(
                 f'Tool "{tool.tool_name}" {"enabled" if tool.is_enabled else "disabled"}'
