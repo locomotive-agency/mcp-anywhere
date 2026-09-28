@@ -14,10 +14,6 @@ from fastmcp.tools.tool import ToolResult
 # inert and only present to keep the argument list aligned with the schema. A hit in
 # the tool's own name outranks the server it came from, which outranks a passing
 # mention in prose.
-# bm25 column weights, in table order: qualified_name is unindexed, so its weight is
-# inert and only present to keep the argument list aligned with the schema. A hit in
-# the tool's own name outranks the server it came from, which outranks a passing
-# mention in prose.
 _BM25_WEIGHTS = (0.0, 5.0, 10.0, 1.0)
 
 # Two FTS5 indexes over the same rows, because neither tokenizer covers what people
@@ -65,8 +61,18 @@ _SYNONYMS: dict[str, tuple[str, ...]] = {
     "appointment": ("event",),
     "config": ("setting",),
     "certificate": ("ssl", "tls"),
+    "flowchart": ("diagram",),
 }
 _MAX_PHRASE = max(len(k.split()) for k in _SYNONYMS)
+
+# Words that carry no meaning about which tool is wanted. Agents often search in whole
+# sentences ("send a text message to a phone number"), and every word must match, so a
+# single "a" or "my" that no description happens to contain would sink the query.
+_STOPWORDS = frozenset(
+    "a an the to of for in on at by with from into about and or is are was be been "
+    "i me my mine you your we our us it its this that these those what which who whom "
+    "how do does can could would should will please some any new".split()
+)
 
 
 @dataclass(frozen=True)
@@ -162,10 +168,12 @@ class SearchResult:
     total_matches is reported separately because the caller cannot infer it: a page
     of 20 looks identical whether 20 tools matched or 535 did, and the agent needs
     that difference to decide between narrowing the query and asking for more.
+    partial says no tool matched every term, so the entries each match only some.
     """
 
     entries: list["ToolEntry"]
     total_matches: int
+    partial: bool = False
 
 
 @dataclass(frozen=True)
@@ -266,12 +274,19 @@ def search_catalogue(
     Every query term must match (AND). A term matches a tool if it is a word, or the
     start of a word, in the word index -- or, for terms of three characters or more,
     anywhere inside a word in the trigram index -- or if one of its synonyms does.
-    Terms shorter than three characters must match a whole word.
+    Terms shorter than three characters must match a whole word. Stopwords are
+    dropped first, unless the query is nothing but stopwords.
 
-    Ordering puts precision first: a tool named exactly as typed, then tools where
-    more terms matched as words before tools that matched only as fragments -- so
-    "tag" ranks listRepositoryTags above a tool that merely contains "stage". Within
-    that, relevance is the sum of bm25 from both indexes, then the name.
+    When no tool matches every term, the result falls back to tools matching some of
+    them, flagged partial and ranked by relevance. A sentence rarely has all its
+    words in one description, and "nothing found" leaves the caller guessing which
+    word to drop.
+
+    Ordering puts precision first: a tool named exactly as typed, then tools matching
+    more terms, then tools where more terms matched as words before tools that matched
+    only as fragments -- so "tag" ranks listRepositoryTags above a tool that merely
+    contains "stage". Within that, relevance is the sum of bm25 from both indexes,
+    then the name.
 
     An empty query is a browse request rather than a match-everything request, so it
     returns the start of the catalogue in name order.
@@ -296,10 +311,12 @@ def search_catalogue(
         return SearchResult(entries=[], total_matches=0)
     try:
         word_hits: dict[int, int] = {}
+        term_hits: dict[int, int] = {}
         candidates: set[int] | None = None
         word_exprs: list[str] = []
         gram_exprs: list[str] = []
-        for term in plan_terms(tokens):
+        terms = plan_terms([t for t in tokens if t not in _STOPWORDS] or tokens)
+        for term in terms:
             term_word = [_word_expr(term.text, typed=True)] + [
                 _word_expr(a, typed=False) for a in term.alternatives
             ]
@@ -312,9 +329,15 @@ def search_catalogue(
             matched = set(by_word)
             if term_gram:
                 matched |= _rowids(db, "grams", " OR ".join(term_gram))
+            for rowid in matched:
+                term_hits[rowid] = term_hits.get(rowid, 0) + 1
             candidates = matched if candidates is None else candidates & matched
-            if not candidates:
-                return SearchResult(entries=[], total_matches=0)
+
+        partial = not candidates and len(terms) > 1
+        if partial:
+            candidates = set(term_hits)
+        if not candidates:
+            return SearchResult(entries=[], total_matches=0)
 
         word_rank = _ranks(db, "words", " OR ".join(word_exprs))
         gram_rank = _ranks(db, "grams", " OR ".join(gram_exprs)) if gram_exprs else {}
@@ -333,12 +356,20 @@ def search_catalogue(
         return "".join(tokenize(pool[r].tool_name)) == typed
 
     # bm25 is negative in SQLite (lower is better), so a missing index scores 0.
+    def relevance(r: int) -> float:
+        return word_rank.get(r, 0.0) + gram_rank.get(r, 0.0)
+
+    # A partial match is ordered by relevance, not by how many terms it matched: a
+    # count favours descriptions long enough to contain every common word (one
+    # Cloudflare tool documents its whole API), while bm25 weighs rare words up and
+    # long descriptions down.
     ordered = sorted(
         candidates,
         key=lambda r: (
             not exact_name(r),
+            relevance(r) if partial else -term_hits.get(r, 0),
             -word_hits.get(r, 0),
-            word_rank.get(r, 0.0) + gram_rank.get(r, 0.0),
+            relevance(r),
             pool[r].qualified_name,
         ),
     )
@@ -346,7 +377,7 @@ def search_catalogue(
     # Trim by *tool*, not by instance: limit=20 should mean twenty distinct tools to
     # choose from, not twenty rows that might be the same tool on twenty servers.
     kept = [e for group in group_instances(hits)[:limit] for e in group]
-    return SearchResult(entries=kept, total_matches=len(candidates))
+    return SearchResult(entries=kept, total_matches=len(candidates), partial=partial)
 
 
 def group_instances(entries: list[ToolEntry]) -> list[list[ToolEntry]]:
@@ -379,7 +410,14 @@ def format_results(result: SearchResult, total_catalogue: int, query: str) -> st
 
     groups = group_instances(result.entries)
     shown = len(result.entries)
-    if shown < result.total_matches:
+    if result.partial:
+        header = (
+            f"No tool matches every word of {query!r}. Showing {shown} of "
+            f"{result.total_matches} tools that match some of them, best matches first "
+            f"({total_catalogue} in the catalogue). Search again with the key nouns "
+            "to narrow."
+        )
+    elif shown < result.total_matches:
         header = (
             f"Showing {shown} of {result.total_matches} tools matching {query!r} "
             f"({total_catalogue} in the catalogue). "
@@ -575,8 +613,9 @@ def register_search_tool(
 
         Args:
             query: Words to look for in tool names, server names and descriptions.
-                Every word must match, so adding a word narrows the result. Plurals and
-                word endings are handled. Leave empty to browse.
+                Every word must match, so adding a word narrows the result; when no
+                tool matches them all, tools matching some are returned and labelled
+                as such. Plurals and word endings are handled. Leave empty to browse.
             limit: Maximum number of distinct tools to return.
             server: Only return tools from servers whose name contains this text.
 

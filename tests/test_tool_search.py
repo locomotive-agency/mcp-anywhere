@@ -2,8 +2,8 @@
 
 The catalogue this exists for has ~1900 tools and serialises to 2.4 MB, which is
 more than an agent can hold or choose from. Search is only useful if it *narrows*
-and if it forgives the way people actually type: these tests pin AND semantics,
-stemming, prefix matching, and a stable order.
+and if it forgives the way people actually type: these tests pin AND semantics
+(with a flagged partial fallback), stemming, prefix matching, and a stable order.
 
 Relevance ranking itself is SQLite's (bm25) and is not re-tested here; what is
 tested is the behaviour this module is responsible for.
@@ -81,7 +81,13 @@ class TestMatchExpression:
 class TestNarrowing:
     def test_every_term_must_match(self):
         """A second term narrows; an OR would hand back the catalogue."""
-        assert names(search_catalogue(CATALOGUE, "create kubernetes")) == []
+        res = search_catalogue(CATALOGUE, "create repository")
+        assert names(res) == ["createRepository"] and not res.partial
+
+    def test_without_a_full_match_the_result_is_partial_and_says_so(self):
+        res = search_catalogue(CATALOGUE, "create kubernetes")
+        assert res.partial
+        assert set(names(res)) == {"create_issue", "createRepository"}
 
     def test_adding_a_term_reduces_the_result(self):
         broad = search_catalogue(CATALOGUE, "create").entries
@@ -378,3 +384,45 @@ class TestSynonyms:
         for key, alts in _SYNONYMS.items():
             for form in (key, *alts):
                 assert " ".join(tokenize(form)) == form, form
+
+
+class TestSentences:
+    """Agents search in whole sentences; filler words must not sink the query."""
+
+    def test_stopwords_do_not_have_to_match(self):
+        """No description here contains the word "a"; it used to empty the result."""
+        res = search_catalogue(CATALOGUE, "read a file")
+        assert names(res) == ["read_file"] and not res.partial
+
+    def test_a_query_of_only_stopwords_still_searches(self):
+        assert names(search_catalogue(CATALOGUE, "any")) == ["read_file"]
+
+    def test_a_single_unmatched_term_is_empty_not_partial(self):
+        res = search_catalogue(CATALOGUE, "kubernetes")
+        assert res.entries == [] and not res.partial
+
+    def test_partial_matches_rank_by_relevance_not_by_words_matched(self):
+        """A description long enough to mention every common word must not win.
+
+        Live, a Cloudflare tool documenting its whole API outranked Twilio's
+        CreateMessage for "send a text message to a phone number" when partial
+        matches were ordered by how many terms they contained.
+        """
+        filler = " ".join(f"word{i}" for i in range(300))
+        tools = [
+            e("cf_execute", "execute", f"Send requests; message queues; number formats; {filler}"),
+            e("tw_send_message", "send_message", "Send a message"),
+        ]
+        res = search_catalogue(tools, "send a text message to a phone number")
+        assert res.partial
+        assert names(res)[0] == "send_message"
+
+    def test_partial_results_are_labelled_as_such(self):
+        query = "create kubernetes"
+        out = format_results(search_catalogue(CATALOGUE, query), 1866, query)
+        assert out.startswith("No tool matches every word of 'create kubernetes'")
+        assert "create_issue" in out
+
+    def test_flowchart_finds_diagram_tools(self):
+        tools = [e("mm_create_diagram", "create_mermaid_chart_diagram", "Create a Mermaid diagram")]
+        assert names(search_catalogue(tools, "draw a flowchart")) == ["create_mermaid_chart_diagram"]
