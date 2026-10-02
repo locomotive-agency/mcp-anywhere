@@ -126,3 +126,47 @@ class TestBuildPullsInsteadOfBuilding:
         server = make_server(runtime_type="wasm")
         with pytest.raises(ValueError, match="Unsupported runtime type"):
             container_manager.build_server_image(server)
+
+
+class TestHealthCheckWithSeveralTags:
+    """One image can carry several names, e.g. the same digest pulled from two
+    repositories. Docker lists them in its own order, so the health check must not
+    depend on which name comes first."""
+
+    def running_container(self, mock_docker_client, tags):
+        container = MagicMock()
+        container.status = "running"
+        container.image.tags = tags
+        container.image.id = "sha256:2c5c916e0798"
+        mock_docker_client.containers.get.return_value = container
+
+    def test_matching_tag_that_is_not_first_counts(
+        self, container_manager, mock_docker_client
+    ):
+        server = make_server(install_command="registry.example/root/azure-api-mcp:0.0.8")
+        self.running_container(
+            mock_docker_client,
+            [
+                "registry.example/mcp/azure-api-mcp:0.0.8",
+                "registry.example/root/azure-api-mcp:0.0.8",
+            ],
+        )
+        assert container_manager._is_container_healthy(server) is True
+
+    def test_no_matching_tag_is_still_unhealthy(
+        self, container_manager, mock_docker_client
+    ):
+        server = make_server(install_command="registry.example/root/azure-api-mcp:0.0.9")
+        self.running_container(
+            mock_docker_client,
+            [
+                "registry.example/mcp/azure-api-mcp:0.0.8",
+                "registry.example/root/azure-api-mcp:0.0.8",
+            ],
+        )
+        assert container_manager._is_container_healthy(server) is False
+
+    def test_untagged_image_is_unhealthy(self, container_manager, mock_docker_client):
+        server = make_server(install_command="mcp/dockerhub")
+        self.running_container(mock_docker_client, [])
+        assert container_manager._is_container_healthy(server) is False
