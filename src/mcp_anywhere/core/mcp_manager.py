@@ -45,6 +45,10 @@ DEESCALATE_MIN_UPTIME_SECONDS = 7 * 24 * 60 * 60
 WATCHDOG_MIN_INTERVAL = 300
 WATCHDOG_MAX_INTERVAL = 600
 
+# How long the watchdog waits for one re-mounted server to start and list its tools
+# before giving up on it for this sweep.
+WATCHDOG_REMOUNT_TIMEOUT = 120
+
 
 def _mem_overrides_path() -> Path:
     return Path(Config.DATA_DIR) / "mem-overrides.json"
@@ -428,11 +432,46 @@ class MCPManager:
             raise
 
 
+async def remount_server(
+    mcp_manager: "MCPManager",
+    container_manager: ContainerManager,
+    server: "MCPServer",
+    timeout: float = WATCHDOG_REMOUNT_TIMEOUT,
+) -> bool:
+    """Re-mount one server for the watchdog, giving up after ``timeout`` seconds.
+
+    add_server mounts the proxy first and then waits, with no deadline, for the
+    server to list its tools. A server that never answers -- an mcp-remote bridge
+    waiting for an OAuth login in a browser, for one -- would otherwise hold the
+    whole watchdog, and its half-mounted proxy would hang every aggregated
+    tools/list. On timeout the proxy is taken off the router and the container is
+    removed, which ends the stuck stdio client; the next sweep tries again.
+
+    Returns True when the server is mounted, False when it was given up. Errors other
+    than the timeout propagate to the caller unchanged.
+    """
+    try:
+        await asyncio.wait_for(mcp_manager.add_server(server), timeout)
+    except TimeoutError:
+        logger.error(
+            f"[watchdog] server '{server.name}' did not come up within {timeout}s "
+            f"-- unmounting it until the next sweep"
+        )
+        mcp_manager.remove_server(server.id)
+        await asyncio.to_thread(
+            container_manager._cleanup_existing_container,
+            container_manager._get_container_name(server.id),
+        )
+        return False
+    return True
+
+
 async def watchdog_loop(
     mcp_manager: "MCPManager",
     container_manager: ContainerManager,
     min_interval: int = WATCHDOG_MIN_INTERVAL,
     max_interval: int = WATCHDOG_MAX_INTERVAL,
+    remount_timeout: float = WATCHDOG_REMOUNT_TIMEOUT,
 ) -> None:
     """Detect crashed server containers and re-mount just those, in place.
 
@@ -506,7 +545,10 @@ async def watchdog_loop(
                     container_manager._cleanup_existing_container(name)
                     # Drop the stale proxy, then re-mount cleanly (fresh docker run + connect).
                     mcp_manager.remove_server(server.id)
-                    await mcp_manager.add_server(server)
+                    if not await remount_server(
+                        mcp_manager, container_manager, server, remount_timeout
+                    ):
+                        continue
                     logger.info(
                         f"[watchdog] server '{server.name}' recovered "
                         f"(memory={get_server_memory_limit(server.id)})"
