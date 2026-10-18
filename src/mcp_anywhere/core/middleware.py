@@ -11,6 +11,7 @@ References:
 
 from typing import Any
 
+from fastmcp.server.dependencies import get_http_headers
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from sqlalchemy import select
 
@@ -20,6 +21,28 @@ from mcp_anywhere.database import MCPServerTool, get_async_session
 from mcp_anywhere.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _apply_requested_allowlist(tools: list[Any]) -> list[Any]:
+    """Narrow the advertised catalogue to exact names requested by this client.
+
+    This is a discovery filter, not authorization. An absent header preserves the
+    listing; an empty header selects nothing. Never modify the shared cached list.
+    """
+    headers = {key.lower(): value for key, value in get_http_headers().items()}
+    raw = headers.get("x-mcp-tool-allowlist")
+    if raw is None:
+        return tools
+    allowed = {name.strip() for name in raw.split(",") if name.strip()}
+    selected = []
+    for tool in tools:
+        if isinstance(tool, dict):
+            name = tool.get("key") or tool.get("name")
+        else:
+            name = getattr(tool, "key", None) or getattr(tool, "name", None)
+        if name in allowed:
+            selected.append(tool)
+    return selected
 
 
 class ToolFilterMiddleware(Middleware):
@@ -52,7 +75,7 @@ class ToolFilterMiddleware(Middleware):
             user_data = context.fastmcp_context.get_http_request().state.user
         else:
             logger.error(f"No user data attached to request, unable to filter user tooling")
-            return tools
+            return _apply_requested_allowlist(tools)
 
         try:
             disabled_tools = await self._get_disabled_tools_async()
@@ -61,16 +84,16 @@ class ToolFilterMiddleware(Middleware):
             combined_tools = disabled_tools.union(denied_tools)
         except Exception as exc:  # Do not fail tool listing on DB errors
             logger.exception(f"Tool filtering skipped due to DB error: {exc}")
-            return tools
+            return _apply_requested_allowlist(tools)
 
         if not disabled_tools:
-            return tools
+            return _apply_requested_allowlist(tools)
 
         filtered = self._filter_tools(list(tools), combined_tools)
         logger.info(
             f"ToolFilterMiddleware: filtered tools to {len(filtered)} allowed / enabled items"
         )
-        return filtered
+        return _apply_requested_allowlist(filtered)
 
     @staticmethod
     async def _get_disabled_tools_async() -> set[str]:

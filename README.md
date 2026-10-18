@@ -238,6 +238,34 @@ mcp-anywhere serve stdio
 mcp-anywhere serve http --host 0.0.0.0 --port 8000
 ```
 
+### Limit the Catalog for One HTTP Client
+
+Clients with tool-count or context limits can request a smaller `tools/list`
+response using the optional `X-MCP-Tool-Allowlist` header. For example:
+
+```http
+X-MCP-Tool-Allowlist: abc12345_recall,abc12345_retain,def67890_retrieval
+```
+
+Use the exact, case-sensitive tool names advertised by the gateway, including
+their server prefixes. Values are comma-separated; surrounding whitespace and
+duplicate entries are ignored. Unknown names and wildcard expressions match
+nothing. An empty header returns an empty catalog. Omitting the header preserves
+the existing listing.
+
+The filter is applied per request, after existing listing filters and outside the
+shared tool-list cache. It does not change another client's catalog. It reduces
+the returned catalog size, but still builds the upstream catalog internally.
+
+This header controls discovery only: it does not grant or revoke permission to
+execute tools, and it does not limit what an advertised generic dispatcher can
+call. Keep authentication, gateway permissions, and client approval rules in place.
+
+When used with the optional search-mode extension, the allowlist intersects the
+selected mode's listing. To receive selected named tools, also send
+`X-MCP-Tool-List-Mode: full`. In `search` mode, only the advertised meta-tools can
+be selected; the allowlist does not add hidden tools to that mode.
+
 ## Features
 
 ### Authentication & Access Control
