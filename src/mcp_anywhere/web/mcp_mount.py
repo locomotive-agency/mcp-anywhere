@@ -2,6 +2,8 @@
 
 import asyncio
 
+from fastmcp import FastMCP
+from fastmcp.server.http import StarletteWithLifespan
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from mcp_anywhere.logging_config import get_logger
@@ -93,6 +95,16 @@ class FastMCPLifespanWrapper:
                     pass
 
 
+def create_mcp_http_app(router: FastMCP) -> StarletteWithLifespan:
+    """Create the FastMCP HTTP app that serves the MCP endpoint.
+
+    Stateless: the session manager has no idle timeout and most clients never
+    send DELETE, so stateful sessions accumulated in memory until the process
+    was OOM killed.
+    """
+    return router.http_app(path="/", transport="http", stateless_http=True)
+
+
 async def create_mcp_mount_with_lifespan(mcp_manager):
     """Create a properly wrapped FastMCP HTTP app with lifespan management.
 
@@ -102,8 +114,7 @@ async def create_mcp_mount_with_lifespan(mcp_manager):
     Returns:
         FastMCPLifespanWrapper: Wrapped app that manages lifespan
     """
-    # Create the FastMCP HTTP app
-    mcp_http_app = mcp_manager.router.http_app(path="/", transport="http")
+    mcp_http_app = create_mcp_http_app(mcp_manager.router)
 
     # Wrap it with our lifespan manager
     wrapped_app = FastMCPLifespanWrapper(mcp_http_app)
