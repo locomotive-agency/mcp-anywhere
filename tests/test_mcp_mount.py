@@ -292,7 +292,9 @@ async def test_create_mcp_mount_initializes_wrapper():
     assert isinstance(wrapper, FastMCPLifespanWrapper)
     assert wrapper.fastmcp_app is mock_http_app
     assert wrapper.lifespan_started is True
-    mock_router.http_app.assert_called_once_with(path="/", transport="http")
+    mock_router.http_app.assert_called_once_with(
+        path="/", transport="http", stateless_http=True
+    )
 
 
 @pytest.mark.asyncio
