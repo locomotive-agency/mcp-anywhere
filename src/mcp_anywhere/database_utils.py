@@ -45,9 +45,25 @@ async def store_server_tools(
                 server_id=server_config.id,
                 tool_name=tool_name,
                 tool_description=discovered_tools_dict[tool_name]["description"],
+                tool_schema=discovered_tools_dict[tool_name].get("schema"),
                 is_enabled=True,
             )
             db_session.add(new_tool)
+
+        # Refresh what the server now says about tools that already existed. Rows were
+        # previously only ever added or removed, so a description or schema that changed
+        # upstream stayed stale for the life of the row -- and rows created before
+        # schemas were stored never gained one. is_enabled is left alone: it belongs to
+        # the operator, not to discovery.
+        for tool_name in discovered_tools_dict.keys() & existing_tools.keys():
+            row = existing_tools[tool_name]
+            discovered = discovered_tools_dict[tool_name]
+            # Only replace with something: a degraded discovery that returns an empty
+            # description or schema must not wipe what is already known.
+            if discovered.get("description"):
+                row.tool_description = discovered["description"]
+            if discovered.get("schema"):
+                row.tool_schema = discovered["schema"]
 
         logger.info(
             f"Added {len(tools_to_add)} tools for server '{server_config.name}'"
@@ -69,6 +85,12 @@ async def store_server_tools(
         logger.info(
             f"Stored {len(discovered_tools_dict)} tools for server '{server_config.name}'"
         )
+        # Tool counts in the instructions come from these rows, so refresh after the
+        # commit -- a refresh on mount alone runs before discovery has stored them.
+        # Imported here: mcp_anywhere.core imports this module on its way in.
+        from mcp_anywhere.core.instructions import schedule_instructions_refresh
+
+        schedule_instructions_refresh()
 
     except (RuntimeError, ValueError, ConnectionError, IntegrityError) as e:
         logger.exception(f"Database error storing tools for {server_config.name}: {e}")

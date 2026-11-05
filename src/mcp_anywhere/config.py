@@ -95,6 +95,29 @@ class Config:
     # the default because a small gateway gains nothing and a cache nobody asked for
     # only risks a stale catalogue.
     TOOL_LIST_CACHE_TTL = float(os.environ.get("TOOL_LIST_CACHE_TTL", "0"))
+
+    # Expose a search_tools tool so an agent can find a tool by keyword instead of
+    # being handed the whole catalogue. Off by default: it is only worth its own slot
+    # on a gateway large enough that the catalogue is a problem.
+    TOOL_SEARCH_ENABLED = os.environ.get("TOOL_SEARCH_ENABLED", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+    # "full" advertises every tool, as today. "search" advertises only search_tools,
+    # describe_tool and call_tool. An LLM client can only call tools it was listed, so
+    # in search mode everything else is reached through call_tool. A client can choose
+    # per request with the X-MCP-Tool-List-Mode header. Ignored unless
+    # TOOL_SEARCH_ENABLED, since it would otherwise hide everything with nothing left
+    # to find it with.
+    TOOL_LIST_MODE = os.environ.get("TOOL_LIST_MODE", "full").strip().lower()
+
+    # Path to a text file appended to the instructions every client receives on
+    # connect. For what only the operator knows -- which servers belong to which
+    # organisation, which to prefer -- rather than how the gateway works. Unset sends
+    # nothing extra.
+    ROUTER_INSTRUCTIONS_FILE = os.environ.get("ROUTER_INSTRUCTIONS_FILE", "").strip()
     GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
     # Claude settings
