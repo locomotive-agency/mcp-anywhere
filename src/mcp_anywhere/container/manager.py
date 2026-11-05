@@ -209,15 +209,17 @@ class ContainerManager:
                 )
                 return False
 
-            # Check if container uses the expected image
-            container_image = (
-                container.image.tags[0] if container.image.tags else container.image.id
-            )
-            if container_image != expected_image and not container_image.startswith(
-                expected_image
+            # Check if container uses the expected image. One image can carry several
+            # tags (the same digest pulled under two names), listed in Docker's order,
+            # not ours, so any matching tag counts -- checking only the first one made
+            # the watchdog recreate a healthy container on every pass.
+            container_images = container.image.tags or [container.image.id]
+            if not any(
+                image == expected_image or image.startswith(expected_image)
+                for image in container_images
             ):
                 logger.debug(
-                    f"Container {container_name} has wrong image: {container_image} != {expected_image}"
+                    f"Container {container_name} has wrong image: {container_images} != {expected_image}"
                 )
                 return False
 
